@@ -1,4 +1,9 @@
-<div align="center">
+![Auto Assign](https://github.com/FreClean/demo-repository/actions/workflows/auto-assign.yml/badge.svg)
+
+![Proof HTML](https://github.com/FreClean/demo-repository/actions/workflows/proof-html.yml/badge.svg)
+
+# Welcome to your organization's demo respository
+This code repository (or "repo") is designed to demonstrate the best GitHub has to offer with the least amount of noise.
 
 <img width="1024" alt="FreClean Logo" src="https://github.com/user-attachments/assets/a237d16d-a850-4af6-85b0-3d56955f8bef" />
 
