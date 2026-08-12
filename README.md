@@ -2,7 +2,7 @@
 
 ![Proof HTML](https://github.com/FreClean/demo-repository/actions/workflows/proof-html.yml/badge.svg)
 
-# Welcome to your organization's demo respository
+# Welcome to FreClean — Building cleaner communities through innovation, entrepreneurship, and technology
 This code repository (or "repo") is designed to demonstrate the best GitHub has to offer with the least amount of noise.
 
 <img width="1536" height="1536" alt="freclean-logo-primary" src="https://github.com/user-attachments/assets/af07735f-6999-4dd6-bbcf-eea7096cff5f" />
