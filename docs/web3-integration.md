@@ -22,7 +22,7 @@ FreClean can leverage the Celo ecosystem to support digital financial solutions.
 Potential integrations include:
 
 - CELO for blockchain network operations and transaction fees
-- cUSD for digital payments and business transactions
+- USDm for digital payments and business transactions
 - Compatible wallets for accessible financial interactions
 
 ## Digital Payments

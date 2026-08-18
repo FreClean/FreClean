@@ -43,7 +43,7 @@ Welcome to the FreClean Whitepaper.
 
 FreClean was created with one clear vision: to transform the cleaning industry into a modern, technology-driven ecosystem that creates opportunities for individuals, businesses, and communities.
 
-Cleaning is more than maintaining spaces—it improves health, productivity, safety, and quality of life.
+Cleaning is more than maintaining spaces-it improves health, productivity, safety, and quality of life.
 
 Our mission is to make professional cleaning accessible, reliable, environmentally responsible, and powered by innovation.
 
@@ -224,7 +224,7 @@ FreClean is strategically positioned to leverage these trends and deliver a mode
 
 ---
 
-# Chapter 1 — The FreClean Ecosystem
+# Chapter 1 - The FreClean Ecosystem
 
 ## Building More Than a Cleaning Company
 
@@ -326,7 +326,7 @@ Using cloud computing, mobile applications, artificial intelligence, and automat
 
 ---
 
-# Chapter 2 — Professional Cleaning Services
+# Chapter 2 - Professional Cleaning Services
 
 FreClean provides comprehensive cleaning solutions for residential, commercial, and industrial customers.
 
@@ -424,7 +424,7 @@ Feedback --> LoyaltyProgram
 
 ---
 
-# Chapter 3 — FreClean Marketplace
+# Chapter 3 - FreClean Marketplace
 
 The FreClean Marketplace expands our ecosystem beyond services by providing customers and businesses with access to high-quality cleaning products and equipment.
 
@@ -480,7 +480,7 @@ Reviews --> Marketplace
 
 ---
 
-# Chapter 4 — FreClean Academy
+# Chapter 4 - FreClean Academy
 
 FreClean Academy is responsible for developing highly skilled cleaning professionals and future entrepreneurs.
 
@@ -544,7 +544,7 @@ Employment --> CareerGrowth
 
 ---
 
-# Chapter 5 — Employment Marketplace
+# Chapter 5 - Employment Marketplace
 
 FreClean is committed to creating sustainable employment opportunities.
 
@@ -561,7 +561,7 @@ Benefits include:
 
 ---
 
-# Chapter 6 — Franchise & Reseller Network
+# Chapter 6 - Franchise & Reseller Network
 
 To accelerate regional expansion, FreClean will develop a scalable franchise and reseller network.
 
@@ -602,7 +602,7 @@ This integrated model positions FreClean for sustainable long-term growth while 
 
 ---
 
-# Chapter 7 — Technology Platform
+# Chapter 7 - Technology Platform
 
 ## Digital-First by Design
 
@@ -717,7 +717,7 @@ Marketplace vendors can:
 
 ---
 
-# Chapter 8 — Mobile Application
+# Chapter 8 - Mobile Application
 
 The FreClean Mobile Application is designed to provide a seamless experience for customers, cleaning professionals, and business partners.
 
@@ -788,7 +788,7 @@ Platform->>CRM: Store Feedback
 
 ---
 
-# Chapter 9 — Artificial Intelligence
+# Chapter 9 - Artificial Intelligence
 
 Artificial Intelligence will play an important role in the future evolution of the FreClean ecosystem.
 
@@ -866,7 +866,7 @@ Forecasting --> Management
 
 ---
 
-# Chapter 10 — Payment Ecosystem
+# Chapter 10 - Payment Ecosystem
 
 FreClean aims to provide secure, flexible, and accessible payment solutions.
 
@@ -878,7 +878,7 @@ Supported payment methods may include:
 - Bank Transfers
 - Digital Wallets
 - CELO
-- cUSD
+- USDm
 - Additional regional payment methods
 
 This flexible payment infrastructure is designed to support both local customers and future international expansion.
@@ -898,7 +898,7 @@ PaymentGateway --> DigitalWallet
 
 PaymentGateway --> CELO
 
-PaymentGateway --> cUSD
+PaymentGateway --> USDm
 
 PaymentGateway --> FreClean
 ```
@@ -918,7 +918,7 @@ Digital payments provide several advantages:
 
 ---
 
-# Chapter 11 — Security & Privacy
+# Chapter 11 - Security & Privacy
 
 Security is one of FreClean's highest priorities.
 
@@ -979,7 +979,7 @@ As new technologies emerge, FreClean will continue investing in secure, intellig
 
 ---
 
-# Chapter 12 — Business Model
+# Chapter 12 - Business Model
 
 ## A Diversified Business Ecosystem
 
@@ -1115,7 +1115,7 @@ pie title Illustrative Revenue Distribution
 
 ---
 
-# Chapter 13 — Marketing Strategy
+# Chapter 13 - Marketing Strategy
 
 ## Brand Position
 
@@ -1193,7 +1193,7 @@ Loyalty --> Referral
 
 ---
 
-# Chapter 14 — Competitive Analysis
+# Chapter 14 - Competitive Analysis
 
 The professional cleaning industry is highly competitive, yet many providers remain limited by manual processes, inconsistent service quality, and outdated business models.
 
@@ -1230,7 +1230,7 @@ FreClean differentiates itself by combining technology, education, commerce, wor
 
 ---
 
-# Chapter 15 — SWOT Analysis
+# Chapter 15 - SWOT Analysis
 
 ## Strengths
 
@@ -1289,7 +1289,7 @@ Threats --> RiskManagement
 
 ---
 
-# Chapter 16 — Risk Management
+# Chapter 16 - Risk Management
 
 Effective risk management is essential to the long-term success of FreClean.
 
@@ -1348,7 +1348,7 @@ FreClean addresses these risks through continuous monitoring, encryption, secure
 
 ---
 
-# Chapter 17 — Corporate Governance
+# Chapter 17 - Corporate Governance
 
 FreClean believes strong governance builds trust among customers, employees, investors, and business partners.
 
@@ -1415,13 +1415,13 @@ The executive team is responsible for:
 
 ---
 
-# Chapter 18 — Strategic Roadmap (2026–2030)
+# Chapter 18 - Strategic Roadmap (2026–2030)
 
 FreClean's long-term strategy is divided into carefully planned phases to ensure sustainable growth, operational excellence, and international expansion.
 
 ---
 
-## Phase 1 — Foundation (2026)
+## Phase 1 - Foundation (2026)
 
 Objectives:
 
@@ -1443,7 +1443,7 @@ Success Indicators:
 
 ---
 
-## Phase 2 — Digital Growth (2027)
+## Phase 2 - Digital Growth (2027)
 
 Objectives:
 
@@ -1462,7 +1462,7 @@ Success Indicators:
 
 ---
 
-## Phase 3 — Ecosystem Expansion (2028)
+## Phase 3 - Ecosystem Expansion (2028)
 
 Objectives:
 
@@ -1481,7 +1481,7 @@ Success Indicators:
 
 ---
 
-## Phase 4 — Regional Leadership (2029)
+## Phase 4 - Regional Leadership (2029)
 
 Objectives:
 
@@ -1499,7 +1499,7 @@ Success Indicators:
 
 ---
 
-## Phase 5 — International Expansion (2030)
+## Phase 5 - International Expansion (2030)
 
 Objectives:
 
@@ -1545,7 +1545,7 @@ title FreClean Strategic Roadmap
 
 ---
 
-# Chapter 19 — Key Performance Indicators (KPIs)
+# Chapter 19 - Key Performance Indicators (KPIs)
 
 FreClean will monitor measurable indicators to evaluate growth and operational performance.
 
@@ -1591,7 +1591,7 @@ FreClean will monitor measurable indicators to evaluate growth and operational p
 
 ---
 
-# Chapter 20 — Sustainability & ESG
+# Chapter 20 - Sustainability & ESG
 
 FreClean is committed to sustainable business practices that create positive environmental and social impact.
 
@@ -1625,7 +1625,7 @@ FreClean is committed to sustainable business practices that create positive env
 
 ---
 
-# Chapter 21 — Global Expansion Strategy
+# Chapter 21 - Global Expansion Strategy
 
 FreClean intends to expand using a structured growth model.
 
@@ -1649,7 +1649,7 @@ Expansion will be based on:
 
 ---
 
-# Chapter 22 — Conclusion
+# Chapter 22 - Conclusion
 
 FreClean represents more than a cleaning company.
 
@@ -1671,7 +1671,7 @@ This whitepaper serves as the foundation for FreClean's future and reflects our 
 
 ---
 
-# Appendix A — Service Categories
+# Appendix A - Service Categories
 
 Residential Cleaning
 
@@ -1701,7 +1701,7 @@ Sanitization Services
 
 ---
 
-# Appendix B — Core Technologies
+# Appendix B - Core Technologies
 
 Cloud Infrastructure
 
@@ -1723,7 +1723,7 @@ Automation
 
 ---
 
-# Appendix C — Corporate Principles
+# Appendix C - Corporate Principles
 
 Customer First
 

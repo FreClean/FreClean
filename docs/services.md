@@ -93,7 +93,7 @@ FreClean uses modern technology to improve service management, including:
 - Transparent operations
 - Digital payment options
 
-FreClean can support blockchain-based payments through compatible Celo ecosystem tools, including CELO and cUSD.
+FreClean can support blockchain-based payments through compatible Celo ecosystem tools, including CELO and USDm.
 
 ## Our Service Commitment
 

@@ -16,8 +16,8 @@ FreClean and CeloHT maintain a strategic partnership designed to connect sustain
 
 The partnership brings together two complementary initiatives:
 
-- FreClean — a cleaning products and services business focused on households, offices, Airbnb properties, and small entrepreneurs.
-- CeloHT — a community-driven Web3 initiative focused on financial inclusion, blockchain education, decentralized services, and environmental impact.
+- FreClean - a cleaning products and services business focused on households, offices, Airbnb properties, and small entrepreneurs.
+- CeloHT - a community-driven Web3 initiative focused on financial inclusion, blockchain education, decentralized services, and environmental impact.
 
 Together, the organizations aim to create practical opportunities for communities to access products, services, education, digital payments, and entrepreneurship opportunities.
 
@@ -72,7 +72,7 @@ Where technically and commercially appropriate, FreClean may support digital pay
 Potential payment methods may include:
 
 - CELO
-- cUSD
+- USDm
 - Valora
 - Other compatible Celo ecosystem payment infrastructure where appropriate.
 
@@ -80,7 +80,7 @@ Digital payments are intended to improve accessibility, transparency, and effici
 
 Important clarification
 
-FreClean does not represent CELO, cUSD, Valora, or CeloHT as an investment opportunity.
+FreClean does not represent CELO, USDm, Valora, or CeloHT as an investment opportunity.
 
 The partnership does not constitute:
 

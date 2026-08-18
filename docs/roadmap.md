@@ -8,7 +8,7 @@ The roadmap is designed to support long-term growth, community impact, and regio
 
 ---
 
-# Phase 1 — Foundation
+# Phase 1 - Foundation
 
 ## Goals
 
@@ -28,7 +28,7 @@ The roadmap is designed to support long-term growth, community impact, and regio
 
 ---
 
-# Phase 2 — Product and Market Expansion
+# Phase 2 - Product and Market Expansion
 
 ## Goals
 
@@ -46,7 +46,7 @@ The roadmap is designed to support long-term growth, community impact, and regio
 
 ---
 
-# Phase 3 — Entrepreneur Network Development
+# Phase 3 - Entrepreneur Network Development
 
 ## Goals
 
@@ -63,7 +63,7 @@ The roadmap is designed to support long-term growth, community impact, and regio
 
 ---
 
-# Phase 4 — Technology Integration
+# Phase 4 - Technology Integration
 
 ## Goals
 
@@ -79,12 +79,12 @@ The roadmap is designed to support long-term growth, community impact, and regio
 Potential integrations include:
 
 - CELO for blockchain network operations
-- cUSD for digital payments
+- USDm for digital payments
 - Compatible wallets for transactions
 
 ---
 
-# Phase 5 — Regional Expansion
+# Phase 5 - Regional Expansion
 
 ## Goals
 
@@ -99,7 +99,7 @@ Potential integrations include:
 
 ---
 
-# Phase 6 — Global Sustainable Cleaning Network
+# Phase 6 - Global Sustainable Cleaning Network
 
 ## Goals
 

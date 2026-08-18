@@ -56,7 +56,7 @@ FreClean explores digital payment solutions through the Celo ecosystem.
 
 Security considerations include:
 
-- Safe use of cUSD transactions.
+- Safe use of USDm transactions.
 - Responsible CELO ecosystem participation.
 - Secure Valora wallet practices.
 - Protection against fraudulent activities.

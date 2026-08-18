@@ -69,7 +69,7 @@ FreClean uses technology to improve:
 - Business transparency
 - Community engagement
 
-The ecosystem can integrate Web3 solutions through Celo technology, including digital payments using CELO and cUSD through compatible wallets.
+The ecosystem can integrate Web3 solutions through Celo technology, including digital payments using CELO and USDm through compatible wallets.
 
 ## Revenue Streams
 

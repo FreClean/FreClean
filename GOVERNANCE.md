@@ -264,7 +264,7 @@ Collaboration Areas
 The partnership may include:
 
 - Digital payment solutions using the Celo ecosystem
-- CELO and cUSD payment adoption where appropriate
+- CELO and USDm payment adoption where appropriate
 - Technology innovation
 - Community entrepreneurship programs
 - Sustainable development initiatives

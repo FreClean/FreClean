@@ -20,7 +20,7 @@ The format is based on Keep a Changelog, and this project follows Semantic Versi
 - Added partnership framework.
 - Added Web3 integration documentation.
 - Added Celo ecosystem integration vision.
-- Added cUSD digital payment support concept.
+- Added USDm digital payment support concept.
 - Added CELO ecosystem participation concept.
 - Added Valora wallet integration concept.
 

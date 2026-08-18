@@ -18,7 +18,7 @@ Building Cleaner Spaces • Empowering Entrepreneurs • Creating Better Communi
 ![Status](https://img.shields.io/badge/Status-Active-success.svg)
 ![Industry](https://img.shields.io/badge/Industry-Cleaning-brightgreen.svg)
 ![Web3](https://img.shields.io/badge/Web3-Celo-yellow.svg)
-![Payments](https://img.shields.io/badge/Payments-cUSD%20%7C%20CELO-blue.svg)
+![Payments](https://img.shields.io/badge/Payments-USDm%20%7C%20CELO-blue.svg)
 ![Powered By](https://img.shields.io/badge/Powered%20by-CeloHT-orange.svg)
 
 </div>
@@ -284,18 +284,18 @@ Customers and partners can pay using:
 - Debit Cards
 - Credit Cards
 - Digital Wallets
-- cUSD
+- USDm
 - CELO
 
 Digital payments reduce costs, improve efficiency, and simplify business operations.
 
 ---
 
-# cUSD
+# USDm
 
-FreClean accepts **cUSD (Celo Dollar)** as a preferred digital payment method.
+FreClean accepts **USDm** as a preferred digital payment method.
 
-Benefits of cUSD include:
+Benefits of USDm include:
 
 - Stable digital currency
 - Low transaction fees
@@ -304,7 +304,7 @@ Benefits of cUSD include:
 - Everyday business transactions
 - Financial accessibility
 
-Using cUSD allows customers and businesses to send and receive payments quickly without traditional banking barriers.
+Using USDm allows customers and businesses to send and receive payments quickly without traditional banking barriers.
 
 ---
 
@@ -332,7 +332,7 @@ Valora enables customers to:
 
 - Send money instantly
 - Receive payments securely
-- Store cUSD
+- Store USDm
 - Store CELO
 - Scan QR codes
 - Pay businesses with ease
@@ -390,7 +390,7 @@ FreClean combines professional cleaning with modern digital infrastructure.
 Our technology ecosystem includes:
 
 - Celo Blockchain
-- cUSD
+- USDm
 - CELO
 - Valora Wallet
 - GitHub
@@ -413,7 +413,7 @@ Accepted methods include:
 - Debit Cards
 - Credit Cards
 - Mobile Money (where available)
-- cUSD
+- USDm
 - CELO
 - Valora Wallet
 
@@ -614,7 +614,7 @@ FreClean develops and distributes high-quality cleaning products for residential
 
 Yes.
 
-FreClean accepts modern digital payment solutions including cUSD and CELO through the Celo ecosystem.
+FreClean accepts modern digital payment solutions including USDm and CELO through the Celo ecosystem.
 
 ---
 
@@ -829,7 +829,7 @@ Together, we can create cleaner spaces, healthier communities, and a more sustai
 
 **Web3 Enabled**
 
-**Accepting cUSD • CELO • Valora**
+**Accepting USDm • CELO • Valora**
 
 ---
 
