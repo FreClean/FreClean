@@ -222,7 +222,7 @@ CREATE TABLE payments (
   status TEXT NOT NULL DEFAULT 'CREATED'
     CHECK (status IN ('CREATED','PENDING','PROCESSING','VERIFIED','COMPLETED','FAILED','CANCELLED','EXPIRED','REJECTED')),
   amount_cents INT NOT NULL CHECK (amount_cents >= 0),
-  currency TEXT NOT NULL DEFAULT 'USD', -- or asset symbol for crypto (cUSD, CELO)
+  currency TEXT NOT NULL DEFAULT 'USD', -- or asset symbol for crypto (USDm, CELO)
   order_id UUID REFERENCES orders(id),
   booking_id UUID REFERENCES bookings(id),
   idempotency_key TEXT UNIQUE,

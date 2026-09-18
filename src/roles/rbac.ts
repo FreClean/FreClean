@@ -20,7 +20,7 @@ import type { Request, Response, NextFunction } from "express";
 
 export function requireRole(required: Role) {
   return (req: Request, res: Response, next: NextFunction) => {
-    const roles: Role[] = (req as any).user?.roles ?? [];
+    const roles: Role[] = req.user?.roles ?? [];
     if (!hasRole(roles, required)) {
       return res.status(403).json({ error: "Forbidden" });
     }

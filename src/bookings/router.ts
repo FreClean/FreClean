@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { requestBooking } from "./service.js";
+import { requireAuthentication } from "../auth/middleware.js";
 
 export const bookingsRouter = Router();
 
@@ -12,11 +13,11 @@ const requestSchema = z.object({
   scheduledEnd: z.string().datetime(),
 });
 
-bookingsRouter.post("/", async (req, res, next) => {
+bookingsRouter.post("/", requireAuthentication, async (req, res, next) => {
   try {
     // req.user is populated by an auth middleware (not shown) that verifies
     // the JWT and attaches { id, roles } — never taken from the request body.
-    const customerId = (req as any).user.id;
+    const customerId = req.user!.id;
     const body = requestSchema.parse(req.body);
     const booking = await requestBooking({ customerId, ...body });
     res.status(201).json({ booking });

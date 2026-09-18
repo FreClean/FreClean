@@ -9,7 +9,7 @@ export interface Payment {
   method: PaymentMethod;
   status: PaymentStatus;
   amountCents: number;
-  currency: string; // USD, or asset symbol for crypto (cUSD, CELO)
+  currency: string; // USD, or asset symbol for crypto (USDm, CELO)
   orderId?: string;
   bookingId?: string;
   verificationStatus: "UNVERIFIED" | "VERIFIED" | "FAILED";

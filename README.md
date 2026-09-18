@@ -33,7 +33,7 @@ src/
   bookings/        booking lifecycle
   roles/            authorization and RBAC
   payments/
-    crypto/        CeloHT dApp verification (server-side only)
+    crypto/        CELO and USDm verification (server-side only)
     card/          processor webhook verification
     cash/          staff-recorded cash payments + reconciliation
     verification/  shared fail-closed verification logic
@@ -46,7 +46,7 @@ docs/                  architecture and payment/security documentation
 
 FreClean supports exactly three payment categories see `docs/payments.md`:
 
-1. **Crypto** - via the CeloHT dApp (FreClean never re-implements a wallet UI)
+1. **Crypto** - CELO and USDm, verified against server-side chain data
 2. **Card** - via a certified payment processor (Visa/Mastercard), tokenized, webhook-verified
 3. **Cash** - recorded by authorized staff only, reconciled centrally
 

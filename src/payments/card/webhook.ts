@@ -1,15 +1,8 @@
-import crypto from "node:crypto";
 import { query } from "../../db.js";
 import { recordVerification } from "../verification/index.js";
+export { verifyWebhookSignature } from "./signature.js";
 
-// Verify the processor's webhook signature before trusting the payload.
-// This is illustrative — swap for your processor's actual signature scheme.
-export function verifyWebhookSignature(rawBody: string, signatureHeader: string, secret: string): boolean {
-  const expected = crypto.createHmac("sha256", secret).update(rawBody).digest("hex");
-  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signatureHeader));
-}
-
-interface CardWebhookEvent {
+export interface CardWebhookEvent {
   eventId: string;       // for idempotency / replay protection
   chargeId: string;
   paymentId: string;     // your internal payment id, from metadata
@@ -17,7 +10,13 @@ interface CardWebhookEvent {
   status: "succeeded" | "failed";
 }
 
-export async function handleCardWebhook(event: CardWebhookEvent, expectedAmountCents: number) {
+export async function handleCardWebhook(event: CardWebhookEvent) {
+  const [payment] = await query<{ amount_cents: number }>(
+    "SELECT amount_cents FROM payments WHERE id = $1 AND method = 'CARD'",
+    [event.paymentId]
+  );
+  if (!payment) return { ok: false, error: "Unknown payment" };
+
   const seen = await query(
     `SELECT id FROM payment_transactions WHERE processor_event_id = $1`,
     [event.eventId]
@@ -32,7 +31,7 @@ export async function handleCardWebhook(event: CardWebhookEvent, expectedAmountC
     [event.paymentId, event.chargeId, event.eventId]
   );
 
-  if (event.status === "succeeded" && event.amountCents === expectedAmountCents) {
+  if (event.status === "succeeded" && event.amountCents === payment.amount_cents) {
     await recordVerification(event.paymentId, "PASSED");
   } else {
     await recordVerification(event.paymentId, "FAILED", "processor reported failure or amount mismatch");

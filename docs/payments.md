@@ -3,9 +3,9 @@
 FreClean supports exactly three payment categories. Do not add a fourth
 without an explicit business-owner decision.
 
-## 1. Crypto — via CeloHT dApp
-FreClean never re-implements a wallet UI. Checkout hands off to the CeloHT
-dApp; FreClean Core verifies the resulting on-chain transaction server-side
+## 1. Crypto — CELO and USDm
+FreClean never re-implements a wallet UI. Checkout may hand off to an approved
+wallet flow; FreClean Core verifies the resulting on-chain transaction
 (chain, asset, recipient, amount, confirmations) before marking anything paid.
 See `src/payments/crypto/verify.ts`.
 

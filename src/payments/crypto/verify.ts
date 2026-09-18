@@ -4,7 +4,7 @@ import { recordVerification } from "../verification/index.js";
 interface OnChainTx {
   hash: string;
   chainId: string;
-  asset: string; // e.g. "cUSD" or "CELO"
+  asset: "CELO" | "USDm";
   to: string;
   amount: string; // decimal string, base units already normalized
   confirmations: number;
@@ -12,6 +12,7 @@ interface OnChainTx {
 
 interface ExpectedPayment {
   paymentId: string;
+  expectedChainId: string;
   expectedAsset: string;
   expectedRecipient: string;
   expectedAmount: string;
@@ -32,6 +33,7 @@ export async function verifyCryptoPayment(tx: OnChainTx, expected: ExpectedPayme
 
   const checks = [
     tx.asset === expected.expectedAsset,
+    tx.chainId === expected.expectedChainId,
     tx.to.toLowerCase() === expected.expectedRecipient.toLowerCase(),
     tx.amount === expected.expectedAmount,
     tx.confirmations >= expected.minConfirmations,
