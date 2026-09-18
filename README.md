@@ -1,4 +1,4 @@
-# FreClean — Core
+# FreClean Core
 <img width="1536" height="1536" alt="freclean-logo" src="https://github.com/user-attachments/assets/d27250f3-6f2d-47ae-be8e-79d96d30fd53" />
 
 
@@ -47,11 +47,11 @@ docs/                  architecture, ADRs, API reference
 
 ## Payment policy
 
-FreClean supports exactly three payment categories — see `docs/payments.md`:
+FreClean supports exactly three payment categories see `docs/payments.md`:
 
-1. **Crypto** — via the CeloHT dApp (FreClean never re-implements a wallet UI)
-2. **Card** — via a certified payment processor (Visa/Mastercard), tokenized, webhook-verified
-3. **Cash** — recorded by authorized staff only, reconciled centrally
+1. **Crypto** - via the CeloHT dApp (FreClean never re-implements a wallet UI)
+2. **Card** - via a certified payment processor (Visa/Mastercard), tokenized, webhook-verified
+3. **Cash** - recorded by authorized staff only, reconciled centrally
 
 All three write into one unified `payments` domain model (`src/payments/model.ts`).
 No payment is ever marked `PAID` from client-supplied data — verification is
@@ -65,4 +65,4 @@ always server-side and fail-closed.
 
 ## License
 
-MIT — see LICENSE.
+MIT - see LICENSE.
