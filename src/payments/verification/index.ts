@@ -1,5 +1,4 @@
 import { query } from "../../db.js";
-import { Payment } from "../model.js";
 
 // Fail-closed: verification returning anything other than an explicit
 // "passed" result must leave the payment unverified. Never default to true.

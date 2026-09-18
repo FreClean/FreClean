@@ -29,20 +29,17 @@ npm run dev
 
 ```
 src/
-  auth/            registration, login, sessions, password recovery
-  users/ customers/ staff/ roles/ permissions/
-  services/ bookings/        cleaning-service catalog + booking lifecycle
-  products/ inventory/ carts/ orders/
+  auth/            registration and login
+  bookings/        booking lifecycle
+  roles/            authorization and RBAC
   payments/
     crypto/        CeloHT dApp verification (server-side only)
     card/          processor webhook verification
     cash/          staff-recorded cash payments + reconciliation
     verification/  shared fail-closed verification logic
-    reconciliation/
-  notifications/ entrepreneurship/ support/ analytics/ audit/ integrations/ web3/
 database/migrations/   versioned SQL migrations
-tests/                 unit + integration tests
-docs/                  architecture, ADRs, API reference
+scripts/               operational scripts
+docs/                  architecture and payment/security documentation
 ```
 
 ## Payment policy

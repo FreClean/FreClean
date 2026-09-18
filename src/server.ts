@@ -3,7 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
-import pinoHttp from "pino-http";
+import { pinoHttp } from "pino-http";
 
 import { authRouter } from "./auth/router.js";
 import { bookingsRouter } from "./bookings/router.js";
