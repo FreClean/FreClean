@@ -12,7 +12,7 @@ only service allowed to write to the production database.
 
 - Node.js 20+ / TypeScript
 - Express
-- PostgreSQL (raw SQL migrations, `pg` driver — no hidden ORM magic)
+- PostgreSQL (raw SQL migrations, `pg` driver no hidden ORM magic)
 - JWT-based auth, RBAC middleware
 - Vitest for tests
 
@@ -59,7 +59,7 @@ always server-side and fail-closed.
 
 ## Security
 
-- Server-side authorization only — never trust frontend role claims.
+- Server-side authorization only never trust frontend role claims.
 - Secrets live in environment variables, never in git. See `.env.example`.
 - See `docs/security.md` for the full checklist this repo is audited against.
 
