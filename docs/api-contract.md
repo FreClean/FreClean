@@ -13,6 +13,22 @@ The current API is under `/api`. JSON request and response shapes are versioned 
 
 Every protected request uses `Authorization: Bearer <access-token>`. The API is the only authority for identity, roles, service/product data, booking state, order state, and payment state.
 
+## Disputes contract
+
+The dispute API is authoritative for complaint ownership, status, communication
+visibility, and audit history. Clients must use the canonical codes exported by
+`src/disputes/model.ts`; they must not invent alternate status or category names.
+
+- `POST /api/disputes`: create a customer-owned case. The customer is taken from the access token.
+- `GET /api/disputes`: list cases visible to the authenticated customer, assigned staff member, or authorized queue role.
+- `GET /api/disputes/:id`: retrieve an authorized case and its permitted messages.
+- `POST /api/disputes/:id/messages`: add a customer-visible message; internal messages require investigation permission.
+- `POST /api/disputes/:id/transition`: apply one allowed state transition using the current status for concurrency protection.
+
+Dispute public references are identifiers only, not authorization credentials.
+The API does not claim evidence uploads or refunds succeeded until private storage
+and the authoritative refund domain are integrated.
+
 ## Payment contract
 
 The supported methods are `CRYPTO`, `CARD`, and `CASH`. Crypto assets are `CELO` and `USDm`. Payment status is read-only client data: only server-side chain verification, processor-signed webhook handling, or authorized cash reconciliation can change it. Payment mutations require idempotency keys or provider event identifiers where applicable.

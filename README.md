@@ -3,7 +3,7 @@
 
 
 Backend / API / Database / Business Logic for the FreClean ecosystem
-(cleaning services, products, bookings, orders, inventory, payments, entrepreneurship).
+(cleaning services, products, bookings, orders, inventory, payments, disputes, entrepreneurship).
 
 This is the **canonical core repository**. It owns all business rules and is the
 only service allowed to write to the production database.
@@ -31,6 +31,7 @@ npm run dev
 src/
   auth/            registration and login
   bookings/        booking lifecycle
+  disputes/        complaints, case workflow, communication, and audit integration
   roles/            authorization and RBAC
   payments/
     crypto/        CELO and USDm verification (server-side only)
@@ -54,6 +55,15 @@ All three write into one unified `payments` domain model (`src/payments/model.ts
 No payment is ever marked `PAID` from client-supplied data — verification is
 always server-side and fail-closed.
 
+## Disputes and complaints
+
+The canonical dispute API is under `/api/disputes`. It supports authenticated
+case creation, ownership-filtered retrieval, explicit dispute permissions,
+controlled status transitions, customer/internal communication visibility, and
+audit history. See [`docs/disputes.md`](docs/disputes.md) for the contract and
+the boundaries that still require external infrastructure, including private
+evidence storage and refund-provider integration.
+
 ## Security
 
 - Server-side authorization only never trust frontend role claims.
@@ -66,7 +76,11 @@ always server-side and fail-closed.
 
 This repository is the authoritative core of the FREClean architecture. It enforces the business rules, writes to PostgreSQL, verifies payment state, and is the only service allowed to issue authoritative payment/order state.
 
-External dependencies still required for a full regulated deployment include payment processor approval, legal review for jurisdictional compliance, tax registration review, product compliance review, and a formal security audit before production go-live.
+External dependencies still required for a full regulated deployment include
+private evidence storage and malware scanning, refund and notification providers,
+the customer/staff frontend repositories, payment processor approval, legal
+review for jurisdictional compliance, tax registration review, product
+compliance review, and a formal security audit before production go-live.
 
 ## License
 

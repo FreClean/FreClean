@@ -34,4 +34,7 @@ jobs:
           DATABASE_URL: postgres://freclean:freclean@localhost:5432/freclean_test
           JWT_ACCESS_SECRET: test-secret
       - run: npm run check:repository
+      - run: npm run db:migrate
+        env:
+          DATABASE_URL: postgres://freclean:freclean@localhost:5432/freclean_test
       - run: npm audit --audit-level=high
