@@ -1,0 +1,17 @@
+import { Router } from "express";
+import { z } from "zod";
+import { requireAuthentication, requirePermission } from "../auth/middleware.js";
+import { hasPermission } from "../roles/rbac.js";
+import { createDispute, listDisputes, getDispute, transitionDispute, addMessage } from "./service.js";
+import { disputeCategories, disputeStatuses } from "./model.js";
+
+export const disputesRouter = Router();
+const createSchema = z.object({ category: z.enum(disputeCategories), description: z.string().min(10).max(10000), country: z.string().length(2).optional(), currency: z.string().length(3).optional(), orderId: z.string().uuid().optional(), orderItemId: z.string().uuid().optional(), paymentId: z.string().uuid().optional(), bookingId: z.string().uuid().optional(), productId: z.string().uuid().optional() }).strict();
+disputesRouter.use(requireAuthentication);
+disputesRouter.post("/", requirePermission("dispute:create"), async (req, res, next) => { try { res.status(201).json({ dispute: await createDispute({ customerId: req.user!.id, ...createSchema.parse(req.body) }) }); } catch (error) { next(error); } });
+disputesRouter.get("/", async (req, res, next) => { try { const canViewAll = hasPermission(req.user!.roles, "dispute:view_all") || hasPermission(req.user!.roles, "dispute:admin"); res.json({ disputes: await listDisputes(req.user!.id, canViewAll) }); } catch (error) { next(error); } });
+disputesRouter.get("/:id", async (req, res, next) => { try { const canViewAll = hasPermission(req.user!.roles, "dispute:view_all") || hasPermission(req.user!.roles, "dispute:admin"); const dispute = await getDispute(req.params.id, req.user!.id, canViewAll); if (!dispute) return res.status(404).json({ error: "Dispute not found" }); res.json({ dispute }); } catch (error) { next(error); } });
+const transitionSchema = z.object({ from: z.enum(disputeStatuses), to: z.enum(disputeStatuses), note: z.string().max(4000).optional() }).strict();
+disputesRouter.post("/:id/transition", requirePermission("dispute:investigate"), async (req, res, next) => { try { const disputeId = req.params.id; if (!disputeId) return res.status(404).json({ error: "Dispute not found" }); const canViewAll = hasPermission(req.user!.roles, "dispute:view_all") || hasPermission(req.user!.roles, "dispute:admin"); if (!await getDispute(disputeId, req.user!.id, canViewAll)) return res.status(404).json({ error: "Dispute not found" }); const body = transitionSchema.parse(req.body); await transitionDispute(disputeId, req.user!.id, body.from, body.to, body.note); res.status(204).send(); } catch (error) { next(error); } });
+const messageSchema = z.object({ message: z.string().min(1).max(10000), visibility: z.enum(["CUSTOMER", "INTERNAL"]).default("CUSTOMER") }).strict();
+disputesRouter.post("/:id/messages", async (req, res, next) => { try { const disputeId = req.params.id; if (!disputeId) return res.status(404).json({ error: "Dispute not found" }); const body = messageSchema.parse(req.body); if (body.visibility === "INTERNAL" && !hasPermission(req.user!.roles, "dispute:investigate")) return res.status(403).json({ error: "Forbidden" }); const canViewAll = hasPermission(req.user!.roles, "dispute:view_all") || hasPermission(req.user!.roles, "dispute:admin"); if (!await getDispute(disputeId, req.user!.id, canViewAll)) return res.status(404).json({ error: "Dispute not found" }); res.status(201).json({ message: await addMessage(disputeId, req.user!.id, body.message, body.visibility) }); } catch (error) { next(error); } });

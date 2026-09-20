@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import type { Role } from "../roles/rbac.js";
+import { hasPermission, type Permission, type Role } from "../roles/rbac.js";
 
 export interface AuthenticatedUser {
   id: string;
@@ -41,4 +41,11 @@ export function requireAuthentication(req: Request, res: Response, next: NextFun
   } catch {
     return res.status(401).json({ error: "Invalid access token" });
   }
+}
+
+export function requirePermission(permission: Permission) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    if (!req.user || !hasPermission(req.user.roles, permission)) return res.status(403).json({ error: "Forbidden" });
+    next();
+  };
 }

@@ -11,6 +11,7 @@ import { paymentsRouter } from "./payments/router.js";
 import { pool } from "./db.js";
 import { validateEnvironment } from "./config.js";
 import { ZodError } from "zod";
+import { disputesRouter } from "./disputes/router.js";
 
 validateEnvironment();
 export const app = express();
@@ -48,6 +49,7 @@ app.get("/health/ready", async (_req, res) => {
 app.use("/api/auth", authRouter);
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/payments", paymentsRouter);
+app.use("/api/disputes", disputesRouter);
 
 // Central error handler — never leak internals to the client.
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
