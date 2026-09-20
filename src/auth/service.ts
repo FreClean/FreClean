@@ -11,8 +11,33 @@ interface UserRecord {
   full_name: string;
 }
 
+function getJwtSecret(name: "JWT_ACCESS_SECRET" | "JWT_REFRESH_SECRET") {
+  const secret = process.env[name];
+  if (!secret) {
+    throw Object.assign(new Error(`Missing ${name}`), { status: 500 });
+  }
+  return secret;
+}
+
+export function issueAccessToken(userId: string, roles: Role[]) {
+  return jwt.sign(
+    { sub: userId, roles },
+    getJwtSecret("JWT_ACCESS_SECRET"),
+    { expiresIn: (process.env.JWT_ACCESS_TTL ?? "15m") as SignOptions["expiresIn"] }
+  );
+}
+
+export function issueRefreshToken(userId: string, roles: Role[]) {
+  return jwt.sign(
+    { sub: userId, roles, type: "refresh" },
+    getJwtSecret("JWT_REFRESH_SECRET"),
+    { expiresIn: (process.env.JWT_REFRESH_TTL ?? "30d") as SignOptions["expiresIn"] }
+  );
+}
+
 export async function registerCustomer(email: string, password: string, fullName: string) {
-  const existing = await query<UserRecord>("SELECT id FROM users WHERE email = $1", [email]);
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = await query<UserRecord>("SELECT id FROM users WHERE email = $1", [normalizedEmail]);
   if (existing.length > 0) {
     throw Object.assign(new Error("Email already registered"), { status: 409 });
   }
@@ -22,7 +47,7 @@ export async function registerCustomer(email: string, password: string, fullName
   const [user] = await query<UserRecord>(
     `INSERT INTO users (email, password_hash, full_name)
      VALUES ($1, $2, $3) RETURNING id, email, full_name`,
-    [email, passwordHash, fullName]
+    [normalizedEmail, passwordHash, fullName.trim()]
   );
 
   await query(
@@ -35,9 +60,9 @@ export async function registerCustomer(email: string, password: string, fullName
 }
 
 export async function login(email: string, password: string) {
-  const [user] = await query<UserRecord>("SELECT * FROM users WHERE email = $1", [email]);
+  const normalizedEmail = email.trim().toLowerCase();
+  const [user] = await query<UserRecord>("SELECT * FROM users WHERE email = $1", [normalizedEmail]);
   if (!user) {
-    // Same error for "no such user" and "wrong password" — don't leak which.
     throw Object.assign(new Error("Invalid credentials"), { status: 401 });
   }
 
@@ -53,11 +78,32 @@ export async function login(email: string, password: string) {
     [user.id]
   );
 
-  const accessToken = jwt.sign(
-    { sub: user.id, roles: roles.map((r) => r.name) },
-    process.env.JWT_ACCESS_SECRET!,
-    { expiresIn: (process.env.JWT_ACCESS_TTL ?? "15m") as SignOptions["expiresIn"] }
+  const userRoles = roles.map((r) => r.name);
+  const accessToken = issueAccessToken(user.id, userRoles);
+  const refreshToken = issueRefreshToken(user.id, userRoles);
+
+  return {
+    accessToken,
+    refreshToken,
+    user: { id: user.id, email: user.email, fullName: user.full_name },
+  };
+}
+
+export function refreshAccessToken(refreshToken: string) {
+  const secret = getJwtSecret("JWT_REFRESH_SECRET");
+  const payload = jwt.verify(refreshToken, secret);
+
+  if (typeof payload === "string" || typeof payload.sub !== "string" || !Array.isArray(payload.roles)) {
+    throw Object.assign(new Error("Invalid refresh token"), { status: 401 });
+  }
+
+  const roles = payload.roles.filter((role): role is Role =>
+    ["CUSTOMER", "STAFF", "MANAGER", "ADMIN", "OWNER"].includes(String(role))
   );
 
-  return { accessToken, user: { id: user.id, email: user.email, fullName: user.full_name } };
+  if (roles.length !== payload.roles.length) {
+    throw Object.assign(new Error("Invalid refresh token"), { status: 401 });
+  }
+
+  return issueAccessToken(payload.sub, roles);
 }

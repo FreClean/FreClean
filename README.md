@@ -58,7 +58,15 @@ always server-side and fail-closed.
 
 - Server-side authorization only never trust frontend role claims.
 - Secrets live in environment variables, never in git. See `.env.example`.
+- Production configuration is validated before startup; missing required secrets or invalid payment config fail the process.
+- Refresh tokens are issued for secure session renewal and the core API refuses invalid refresh tokens.
 - See `docs/security.md` for the full checklist this repo is audited against.
+
+## Production readiness notes
+
+This repository is the authoritative core of the FREClean architecture. It enforces the business rules, writes to PostgreSQL, verifies payment state, and is the only service allowed to issue authoritative payment/order state.
+
+External dependencies still required for a full regulated deployment include payment processor approval, legal review for jurisdictional compliance, tax registration review, product compliance review, and a formal security audit before production go-live.
 
 ## License
 
