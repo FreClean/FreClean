@@ -15,6 +15,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint src",
+    "db:up": "docker compose up -d postgres",
+    "db:down": "docker compose down",
+    "db:logs": "docker compose logs -f postgres",
     "db:migrate": "node scripts/migrate.js up",
     "check:repository": "node scripts/validate-repository.js"
   },

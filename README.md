@@ -21,9 +21,14 @@ only service allowed to write to the production database.
 ```bash
 cp .env.example .env
 npm install
+npm run db:up
 npm run db:migrate
 npm run dev
 ```
+
+The local PostgreSQL database runs through Docker Compose on `localhost:5432`.
+Use `npm run db:down` to stop it while preserving the named database volume,
+or `docker compose down -v` when you intentionally want to delete local data.
 
 ## Structure
 
