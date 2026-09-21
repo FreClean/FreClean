@@ -90,7 +90,7 @@ compliance review, and a formal security audit before production go-live.
 
 ## Legal & Compliance Status
 
-FreClean is currently formalizing its legal and operational framework in Haiti.
+FreClean is currently formalizing and documenting its legal and operational framework in Haiti.
 
 Current status:
 

@@ -7,14 +7,14 @@
 
 ## Supported future contract types
 
-- Client Agreement
-- Supplier Agreement
-- Partner Agreement
-- Service Agreement
-- Employment Agreement
-- Contractor Agreement
-- Payment Provider Agreement
-- Other
+- `CLIENT_CONTRACT`
+- `SUPPLIER_CONTRACT`
+- `PARTNER_AGREEMENT`
+- `SERVICE_AGREEMENT`
+- `EMPLOYMENT_AGREEMENT`
+- `CONTRACTOR_AGREEMENT`
+- `PAYMENT_PROVIDER_AGREEMENT`
+- `OTHER`
 
 No fake executed contracts are created or represented here. Any future draft
 must be clearly marked:

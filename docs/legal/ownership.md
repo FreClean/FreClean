@@ -3,7 +3,7 @@
 | Field | Current record |
 | --- | --- |
 | Founder / Owner | Johnny Dubic |
-| Ownership structure | PENDING FORMAL VERIFICATION |
+| Legal ownership structure | PENDING LEGAL STRUCTURE |
 
 No shareholders, ownership percentages, directors, board members, voting
 rights, or capital contributions are recorded because they have not been

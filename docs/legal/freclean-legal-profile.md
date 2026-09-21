@@ -8,9 +8,9 @@
 | Commercial Name / Brand | FreClean |
 | Founder / Owner | Johnny Dubic |
 | Founder Nationality | Haitian |
-| Legal Structure | PENDING DECISION |
-| Country | Haiti |
-| Operating Area | Léogâne, Ouest, Haiti |
+| Legal Structure | PENDING / TO BE DETERMINED |
+| Country of Principal Entity | Haiti |
+| Operating Location | Léogâne, Ouest, Haiti |
 | Business Address | Grand Rue, Léogâne, Haiti |
 | Business Start Date | 16 April 2025 |
 
@@ -19,7 +19,7 @@
 - Cleaning Services
 - Cleaning Products
 - Fragrance / Scented Products
-- Entrepreneurship
+- Entrepreneurship / support for small businesses
 
 This profile records the currently verified information supplied for the
 repository. It does not establish incorporation, registration, licensing, tax

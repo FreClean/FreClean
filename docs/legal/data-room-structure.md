@@ -3,6 +3,8 @@
 The following is a documentation blueprint for an access-controlled private
 data room. It is not a repository directory and must not be used to upload
 confidential documents to this public GitHub repository.
+Confidential documents must not be uploaded here or stored as a public GitHub
+document-storage system.
 
 ```text
 FRECLEAN_LEGAL_COMPLIANCE/
