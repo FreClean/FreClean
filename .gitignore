@@ -6,3 +6,18 @@ dist/
 *.log
 coverage/
 .DS_Store
+
+# Private credentials and legal/compliance records. Keep confidential source
+# documents in an access-controlled data room, never in this public repository.
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+secrets/
+private/
+confidential/
+legal-private/
+banking/
+tax-private/
+identity-private/

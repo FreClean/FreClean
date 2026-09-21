@@ -3,7 +3,8 @@
 
 
 Backend / API / Database / Business Logic for the FreClean ecosystem
-(cleaning services, products, bookings, orders, inventory, payments, disputes, entrepreneurship).
+(Cleaning Services, Cleaning Products, Fragrance / Scented Products, bookings,
+orders, inventory, payments, disputes, Entrepreneurship).
 
 This is the **canonical core repository**. It owns all business rules and is the
 only service allowed to write to the production database.
@@ -79,13 +80,43 @@ evidence storage and refund-provider integration.
 
 ## Production readiness notes
 
-This repository is the authoritative core of the FREClean architecture. It enforces the business rules, writes to PostgreSQL, verifies payment state, and is the only service allowed to issue authoritative payment/order state.
+This repository is the authoritative core of the FreClean architecture. It enforces the business rules, writes to PostgreSQL, verifies payment state, and is the only service allowed to issue authoritative payment/order state.
 
 External dependencies still required for a full regulated deployment include
 private evidence storage and malware scanning, refund and notification providers,
 the customer/staff frontend repositories, payment processor approval, legal
 review for jurisdictional compliance, tax registration review, product
 compliance review, and a formal security audit before production go-live.
+
+## Legal & Compliance Status
+
+FreClean is currently formalizing its legal and operational framework in Haiti.
+
+Current status:
+
+- NIF: In process
+- NINU: In process
+- CIP: In process
+- Registre du Commerce: In process
+- Commercial Name Certificate: In process
+- Patente: In process
+- Company Statutes: Pending legal structure
+- Business Bank Account: In process
+- Insurance: In process
+- FreClean Trademark: Yes
+- Client Contracts: Not yet available
+- Supplier Contracts: In process
+
+Legal Structure: Pending determination.
+
+These statuses are informational and do not represent legal advice or
+confirmation that pending registrations, licenses, certificates, or compliance
+obligations have been completed.
+
+The full public documentation register is in
+[`docs/legal/document-register.md`](docs/legal/document-register.md). Confidential
+evidence belongs in an access-controlled private data room, not in this public
+repository.
 
 ## License
 
