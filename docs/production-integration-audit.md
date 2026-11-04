@@ -31,7 +31,7 @@ This audit covers the FreClean core repository and read-only production smoke ch
 - `/health/ready` is implemented as a fail-closed `SELECT 1` check and returns 503 with a generic database status on failure.
 - The production readiness smoke check previously returned HTTP 503. This proves the endpoint detected an unavailable database at that time, but it does not prove subsequent recovery.
 - A fresh readiness smoke check timed out at the client's 20-second limit. The readiness implementation now limits the database check itself to five seconds and returns HTTP 503 instead of hanging.
-- `/` remains a 404 because the backend has no homepage contract.
+- `/` now returns HTTP 200 with `{"status":"ok"}`; it is a minimal service liveness signal, not an API inventory or internal status page.
 
 ### CORS and public enquiries
 
@@ -80,6 +80,7 @@ This audit covers the FreClean core repository and read-only production smoke ch
 
 ### Local verification
 
+- The repository originally returned 404 from `/` because no root route was registered; a minimal root handler now returns `{"status":"ok"}`.
 - Docker PostgreSQL 16 started from the repository Compose configuration.
 - `npm run db:migrate` applied `0001_init.sql`, `0002_disputes.sql`, and `0003_public-enquiries.sql` successfully.
 - `npm run db:verify` can report applied migrations, pending migrations, required table presence, and enquiry indexes.
@@ -134,6 +135,21 @@ The frontend must:
 9. Treat payment success as server-authoritative only. Do not add Stripe checkout until Stripe configuration, webhook verification, and provider enablement are implemented and approved.
 10. Do not attempt direct Supabase database access; this backend owns PostgreSQL and does not expose Supabase authentication sessions.
 
+## npm Vulnerability Audit
+
+The full audit reports 17 findings: 13 moderate and 4 high; there are no critical findings.
+
+- `body-parser <1.20.9`: high. Installed `1.20.8`; fix is `1.20.9` through the normal npm audit remediation path. Exploitable only where compressed request bodies reach the parser with malformed trailing bytes; application input limits reduce exposure.
+- `qs 6.7.0 - 6.16.0`: moderate. Installed `6.16.0`; fix is `6.16.2` via normal audit remediation.
+- `vite 8.3.0 - 8.3.2`: high. Installed `8.3.0`; fix is `8.3.5` via normal audit remediation. These findings primarily affect development-server source/file behavior and Windows editor launches, not the built production server.
+- `vitest 5.0.0-beta.1 - 5.0.2` and transitive `@vitest/mocker`: moderate; installed Vitest `5.0.1`. Fix preview updates Vitest to `5.1.0` through normal audit remediation.
+- `source-map-js 1.0.0 - 1.2.1`: high; fix preview updates it to `1.2.2`.
+- `zod <4.6.6`: high. Installed `3.25.76`; npm proposes `zod 4.6.7`, a major breaking upgrade. Do not apply with `npm audit fix --force`; assess API migration compatibility before any major upgrade.
+- `minimatch <11.0.1`: moderate and transitive through ESLint tooling; npm currently reports no available fix.
+- Remaining ESLint/TypeScript ESLint moderate findings are transitive toolchain findings with no direct fix available from the current npm graph.
+
+A normal `npm audit fix --dry-run --ignore-scripts` preview proposes non-breaking fixes for Vite, Vitest, `body-parser`, `qs`, and `source-map-js`, plus ESLint package updates. It proposes no production forcing of `zod` 4.x. A normal patch remediation should be run separately with tests and reviewed lockfile diff; `npm audit fix --force` must not be used.
+
 ## Deployment Recommendation
 
 Configure Render with:
@@ -143,5 +159,6 @@ Configure Render with:
 - `CARD_PAYMENTS_ENABLED=false` until a certified provider is explicitly approved and configured.
 - Existing PostgreSQL and JWT secrets remain in the Render secret environment only.
 - Database migrations are applied before traffic is enabled.
+- The Session Pooler URL for Supabase project `rfpqjfbeeisnzexzonkx` must be verified by hostname, project reference, port, username, database, and SSL mode before deployment verification.
 
 The readiness endpoint should be monitored separately after migration and database recovery; it is not suitable as a substitute for liveness.

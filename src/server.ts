@@ -44,6 +44,7 @@ app.use(express.json({
 app.use(pinoHttp());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
+app.get("/", (_req, res) => res.json({ status: "ok" }));
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/health/ready", async (req, res) => {
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;

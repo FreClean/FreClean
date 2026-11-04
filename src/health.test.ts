@@ -22,6 +22,13 @@ beforeEach(() => {
 });
 
 describe("health endpoints", () => {
+  it("returns a minimal 200 response from the root endpoint", async () => {
+    const response = await request(app).get("/");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual({ status: "ok" });
+  });
+
   it("returns 200 from the liveness endpoint", async () => {
     const response = await request(app).get("/health");
 
