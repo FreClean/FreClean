@@ -7,7 +7,9 @@ vi.mock("../db.js", () => ({
 }));
 
 const createPublicEnquiry = vi.fn();
-vi.mock("./service.js", () => ({ createPublicEnquiry }));
+const listPublicEnquiries = vi.fn();
+const updatePublicEnquiryStatus = vi.fn();
+vi.mock("./service.js", () => ({ createPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus }));
 
 let app: import("express").Express;
 
@@ -20,6 +22,8 @@ beforeAll(async () => {
 
 beforeEach(() => {
   createPublicEnquiry.mockReset();
+  listPublicEnquiries.mockReset();
+  updatePublicEnquiryStatus.mockReset();
   createPublicEnquiry.mockResolvedValue("9f1d3f6f-7ab8-44aa-b23f-0a8d0e0c9ad1");
 });
 
@@ -40,6 +44,41 @@ describe("POST /api/public/requests", () => {
       received: true,
       requestId: "9f1d3f6f-7ab8-44aa-b23f-0a8d0e0c9ad1",
     });
+  });
+
+  it("preserves every customer request field submitted by the frontend", async () => {
+    const response = await request(app).post("/api/public/requests").send({
+      service: "Deep cleaning",
+      property_type: "Apartment",
+      space_size: "Large",
+      date: "2026-12-15",
+      time: "14:30",
+      name: "Maria Santos",
+      phone: "+1 809-555-0100",
+      email: "Maria@example.com",
+      location: "Santo Domingo",
+      notes: "Please include kitchen and balcony cleaning.",
+      payment_method: "Cash",
+    });
+
+    expect(response.status).toBe(201);
+    expect(createPublicEnquiry).toHaveBeenCalledWith(expect.objectContaining({
+      fullName: "Maria Santos",
+      propertyType: "Apartment",
+      spaceSize: "Large",
+      date: "2026-12-15",
+      time: "14:30",
+      location: "Santo Domingo",
+      notes: "Please include kitchen and balcony cleaning.",
+      paymentMethod: "Cash",
+    }));
+  });
+
+  it("protects administrative list and status routes", async () => {
+    const list = await request(app).get("/api/public/requests");
+    const update = await request(app).patch("/api/public/requests/00000000-0000-4000-8000-000000000000/status").send({ status: "CONTACTED" });
+    expect(list.status).toBe(401);
+    expect(update.status).toBe(401);
   });
 
   it("rejects missing required fields and invalid email/phone values", async () => {
