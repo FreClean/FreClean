@@ -82,6 +82,19 @@ evidence storage and refund-provider integration.
 
 This repository is the authoritative core of the FreClean architecture. It enforces the business rules, writes to PostgreSQL, verifies payment state, and is the only service allowed to issue authoritative payment/order state.
 
+### Render health checks
+
+Use the Render service URL for HTTPS smoke tests:
+
+- Liveness: `GET https://freclean.onrender.com/health`
+- Readiness: `GET https://freclean.onrender.com/health/ready`
+- Configure Render's Health Check Path as `/health`.
+- Treat `/health` as an HTTP 200 liveness signal only.
+- Treat `/health/ready` as database readiness: HTTP 200 means `SELECT 1` succeeded; HTTP 503 means PostgreSQL is unavailable.
+- Do not put database URLs or other credentials in health-check paths, responses, or logs.
+
+The production CORS origin is `https://freclean.com`. This repository does not contain a Supabase integration or authentication client, so Supabase configuration is not part of this service's runtime.
+
 External dependencies still required for a full regulated deployment include
 private evidence storage and malware scanning, refund and notification providers,
 the customer/staff frontend repositories, payment processor approval, legal

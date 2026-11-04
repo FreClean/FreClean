@@ -65,11 +65,11 @@ The `requestId` is returned only after the PostgreSQL insert commits. Validation
 
 In production, CORS is restricted to the exact origin `https://freclean.com`. The production deployment must set `CORS_ORIGIN=https://freclean.com`, `DATABASE_URL`, authentication secrets, payment secrets and addresses when payment modules are used, and a random 32-character-or-longer `ENQUIRY_SPAM_SECRET`. The endpoint does not require payment configuration, but production startup continues to validate the core service's existing required configuration.
 
-Apply migration `database/migrations/0003_public-enquiries.sql` before starting the API. Deployments must terminate TLS at the public HTTPS edge, expose `/health` and `/health/ready`, and run a real HTTPS smoke test before reporting the endpoint deployed. No production URL is invented or assumed by this repository.
+Apply migration `database/migrations/0003_public-enquiries.sql` before starting the API. Deployments must terminate TLS at the public HTTPS edge, expose `/health` and `/health/ready`, and run a real HTTPS smoke test before reporting the endpoint deployed. The Render core service is `https://freclean.onrender.com`; configure its Render Health Check Path as `/health`.
 
 ## Environment and deployment
 
-Runtime configuration is supplied through environment variables documented in `.env.example`. Secrets, database credentials, processor credentials, and wallet keys are never committed. Deployments apply migrations before starting the API, expose `/health` for liveness and `/health/ready` for database readiness, and support graceful `SIGTERM` shutdown.
+Runtime configuration is supplied through environment variables documented in `.env.example`. Secrets, database credentials, processor credentials, and wallet keys are never committed. Deployments apply migrations before starting the API, expose `/health` for liveness and `/health/ready` for database readiness, and support graceful `SIGTERM` shutdown. Readiness performs only `SELECT 1`, reports no connection details, and returns 503 on failure. The public website origin is `https://freclean.com`; no Supabase integration or Stripe implementation is part of the current backend, and payment endpoints must remain disabled until their provider configuration and verification are properly implemented.
 
 ## Release process
 
