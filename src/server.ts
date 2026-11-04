@@ -46,11 +46,19 @@ app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 app.get("/health/ready", async (_req, res) => {
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   try {
-    await pool.query("SELECT 1");
+    await Promise.race([
+      pool.query("SELECT 1"),
+      new Promise<never>((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error("database readiness timeout")), 5000);
+      }),
+    ]);
     res.json({ status: "ok", database: "ok" });
   } catch {
     res.status(503).json({ status: "unavailable", database: "unavailable" });
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
   }
 });
 

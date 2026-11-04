@@ -27,6 +27,10 @@ paymentsRouter.post("/cash", requireAuthentication, requireRole("STAFF"), async 
 // Card processor webhook — public endpoint, protected by signature check.
 paymentsRouter.post("/card/webhook", async (req, res, next) => {
   try {
+    if (process.env.CARD_PAYMENTS_ENABLED !== "true") {
+      return res.status(503).json({ error: "Card payments are not enabled" });
+    }
+
     const signature = req.header("X-Webhook-Signature") ?? "";
     const valid = verifyWebhookSignature(
       req.rawBody ?? Buffer.from([]),
