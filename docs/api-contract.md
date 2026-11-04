@@ -33,6 +33,40 @@ and the authoritative refund domain are integrated.
 
 The supported methods are `CRYPTO`, `CARD`, and `CASH`. Crypto assets are `CELO` and `USDm`. Payment status is read-only client data: only server-side chain verification, processor-signed webhook handling, or authorized cash reconciliation can change it. Payment mutations require idempotency keys or provider event identifiers where applicable.
 
+## Public website enquiries
+
+`POST /api/public/requests` accepts anonymous service and contact enquiries from `https://freclean.com`. The endpoint requires no bearer token and must not be used to create bookings, orders, payments, or approval state.
+
+Request JSON:
+
+```json
+{
+  "type": "SERVICE",
+  "fullName": "Jean Pierre",
+  "email": "visitor@example.com",
+  "phone": "+509 1234 5678",
+  "service": "Residential cleaning",
+  "message": "I would like a cleaning estimate for my home."
+}
+```
+
+The fields `type`, `fullName`, `email`, and `message` are required. `type` is exactly `SERVICE` or `CONTACT`; `fullName` is 2-100 characters, `email` is 254 characters or fewer, `phone` is optional with 32 characters or fewer, `service` is optional with 100 characters or fewer, and `message` is 10-5000 characters. Unknown fields are rejected. The optional empty honeypot field `website` may be included by the website client. The request body is limited to 16 KB, and the route allows 10 submissions per source address per 15 minutes.
+
+Success:
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{"received":true,"requestId":"9f1d3f6f-7ab8-44aa-b23f-0a8d0e0c9ad1"}
+```
+
+The `requestId` is returned only after the PostgreSQL insert commits. Validation failures return `400` with field errors, duplicate submissions return `409`, body-limit violations return `413`, origin violations return `403`, rate-limit violations return `429`, and database or server failures return `500` with a generic error body. PII is not included in receipt or error responses.
+
+In production, CORS is restricted to the exact origin `https://freclean.com`. The production deployment must set `CORS_ORIGIN=https://freclean.com`, `DATABASE_URL`, authentication secrets, payment secrets and addresses when payment modules are used, and a random 32-character-or-longer `ENQUIRY_SPAM_SECRET`. The endpoint does not require payment configuration, but production startup continues to validate the core service's existing required configuration.
+
+Apply migration `database/migrations/0003_public-enquiries.sql` before starting the API. Deployments must terminate TLS at the public HTTPS edge, expose `/health` and `/health/ready`, and run a real HTTPS smoke test before reporting the endpoint deployed. No production URL is invented or assumed by this repository.
+
 ## Environment and deployment
 
 Runtime configuration is supplied through environment variables documented in `.env.example`. Secrets, database credentials, processor credentials, and wallet keys are never committed. Deployments apply migrations before starting the API, expose `/health` for liveness and `/health/ready` for database readiness, and support graceful `SIGTERM` shutdown.

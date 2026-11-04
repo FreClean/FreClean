@@ -12,22 +12,30 @@ import { pool } from "./db.js";
 import { validateEnvironment } from "./config.js";
 import { ZodError } from "zod";
 import { disputesRouter } from "./disputes/router.js";
+import { publicRequestsRouter } from "./public/requests.js";
 
 validateEnvironment();
 export const app = express();
 
 app.use(helmet());
-const allowedOrigins = new Set((process.env.CORS_ORIGIN ?? "").split(",").map((origin) => origin.trim()).filter(Boolean));
+const isProduction = process.env.NODE_ENV === "production";
+const allowedOrigins = isProduction
+  ? new Set(["https://freclean.com"])
+  : new Set((process.env.CORS_ORIGIN ?? "http://localhost:3000").split(",").map((origin) => origin.trim()).filter(Boolean));
 app.use(cors({
   credentials: true,
   origin: (origin, callback) => {
     if (!origin || allowedOrigins.has(origin)) return callback(null, true);
-    return callback(new Error("Origin is not allowed"));
+    const error = Object.assign(new Error("Origin is not allowed"), { status: 403 });
+    return callback(error);
   },
 }));
 app.use(express.json({
-  limit: "1mb",
+  limit: "64kb",
   verify: (req, _res, buffer) => {
+    if (req.url === "/api/public/requests" && buffer.byteLength > 16 * 1024) {
+      throw Object.assign(new Error("Request body too large"), { status: 413 });
+    }
     if (req.url === "/api/payments/card/webhook") {
       (req as typeof req & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
     }
@@ -48,6 +56,7 @@ app.get("/health/ready", async (_req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/bookings", bookingsRouter);
+app.use("/api/public", publicRequestsRouter);
 app.use("/api/payments", paymentsRouter);
 app.use("/api/disputes", disputesRouter);
 
@@ -56,6 +65,9 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
   req.log?.error(err);
   if (err instanceof ZodError) {
     return res.status(400).json({ error: "Invalid request", details: err.flatten().fieldErrors });
+  }
+  if (err?.type === "entity.too.large") {
+    return res.status(413).json({ error: "Request body too large" });
   }
   const status = err.status ?? 500;
   res.status(status).json({ error: status === 500 ? "Internal server error" : err.message });

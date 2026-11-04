@@ -8,7 +8,8 @@ describe("production environment validation", () => {
     process.env.DATABASE_URL = "postgres://user:pass@localhost:5432/freclean";
     process.env.JWT_ACCESS_SECRET = "1234567890abcdef1234567890abcdef";
     process.env.JWT_REFRESH_SECRET = "";
-    process.env.CORS_ORIGIN = "https://app.example.com";
+    process.env.ENQUIRY_SPAM_SECRET = "1234567890abcdef1234567890abcdef";
+    process.env.CORS_ORIGIN = "https://freclean.com";
     process.env.CARD_PROCESSOR_WEBHOOK_SECRET = "";
 
     expect(() => validateEnvironment()).toThrow(/JWT_REFRESH_SECRET|CARD_PROCESSOR_WEBHOOK_SECRET/);
@@ -17,6 +18,7 @@ describe("production environment validation", () => {
     process.env.DATABASE_URL = previous.DATABASE_URL;
     process.env.JWT_ACCESS_SECRET = previous.JWT_ACCESS_SECRET;
     process.env.JWT_REFRESH_SECRET = previous.JWT_REFRESH_SECRET;
+    process.env.ENQUIRY_SPAM_SECRET = previous.ENQUIRY_SPAM_SECRET;
     process.env.CORS_ORIGIN = previous.CORS_ORIGIN;
     process.env.CARD_PROCESSOR_WEBHOOK_SECRET = previous.CARD_PROCESSOR_WEBHOOK_SECRET;
   });

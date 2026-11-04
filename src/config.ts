@@ -3,6 +3,7 @@ const requiredInProduction = [
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
   "CORS_ORIGIN",
+  "ENQUIRY_SPAM_SECRET",
   "CARD_PROCESSOR_API_KEY",
   "CARD_PROCESSOR_WEBHOOK_SECRET",
   "CELO_RPC_URL",
@@ -21,7 +22,7 @@ export function validateEnvironment() {
       throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
     }
 
-    const invalidSecrets = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "CARD_PROCESSOR_WEBHOOK_SECRET"]
+    const invalidSecrets = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "ENQUIRY_SPAM_SECRET", "CARD_PROCESSOR_WEBHOOK_SECRET"]
       .filter((name) => (process.env[name] ?? "").length < minimumSecretLength);
     if (invalidSecrets.length > 0) {
       throw new Error(`Production secrets must be at least ${minimumSecretLength} characters: ${invalidSecrets.join(", ")}`);
@@ -34,8 +35,9 @@ export function validateEnvironment() {
 
     if (origins.length === 0 || !origins.every((origin) => /^https?:\/\//.test(origin) || origin === "localhost")) {
       throw new Error("CORS_ORIGIN must include at least one valid production origin");
-    }
-  }
+    }    if (origins.some((origin) => origin !== "https://freclean.com")) {
+      throw new Error("CORS_ORIGIN must be exactly https://freclean.com in production");
+    }  }
 
   return true;
 }
