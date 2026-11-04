@@ -37,20 +37,29 @@ The supported methods are `CRYPTO`, `CARD`, and `CASH`. Crypto assets are `CELO`
 
 `POST /api/public/requests` accepts anonymous service and contact enquiries from `https://freclean.com`. The endpoint requires no bearer token and must not be used to create bookings, orders, payments, or approval state.
 
-Request JSON:
+Request JSON accepts legacy contact fields and the current website booking fields:
 
 ```json
 {
   "type": "SERVICE",
   "fullName": "Jean Pierre",
+  "name": "Jean Pierre",
   "email": "visitor@example.com",
   "phone": "+509 1234 5678",
   "service": "Residential cleaning",
-  "message": "I would like a cleaning estimate for my home."
+  "property_type": "Apartment",
+  "space_size": "Medium",
+  "date": "2026-12-15",
+  "time": "14:30",
+  "location": "Santo Domingo",
+  "notes": "Please include kitchen and balcony cleaning.",
+  "payment_method": "Cash",
+  "message": "I would like a cleaning estimate for my home.",
+  "website": ""
 }
 ```
 
-The fields `type`, `fullName`, `email`, and `message` are required. `type` is exactly `SERVICE` or `CONTACT`; `fullName` is 2-100 characters, `email` is 254 characters or fewer, `phone` is optional with 32 characters or fewer, `service` is optional with 100 characters or fewer, and `message` is 10-5000 characters. Unknown fields are rejected. The optional empty honeypot field `website` may be included by the website client. The request body is limited to 16 KB, and the route allows 10 submissions per source address per 15 minutes.
+For compatibility, either `fullName` or `name` is required, and either `message` or `notes` is required. The website may submit `notes` alone. All submitted known fields are persisted. `type` is exactly `SERVICE` or `CONTACT` and defaults to `SERVICE`. Names are 2-100 characters, email is 254 characters or fewer, phone is optional with 32 characters or fewer, service/property/location values use bounded text validation, date is an ISO date, and time is 24-hour `HH:MM`. Notes or message text is 10-5000 characters. Unknown fields are rejected. The optional empty honeypot field `website` may be included by the website client. The request body is limited to 16 KB, and the route allows 10 submissions per source address per 15 minutes.
 
 Success:
 
@@ -63,9 +72,9 @@ Content-Type: application/json
 
 The `requestId` is returned only after the PostgreSQL insert commits. Validation failures return `400` with field errors, duplicate submissions return `409`, body-limit violations return `413`, origin violations return `403`, rate-limit violations return `429`, and database or server failures return `500` with a generic error body. PII is not included in receipt or error responses.
 
-In production, CORS is restricted to the exact origin `https://freclean.com`. The production deployment must set `CORS_ORIGIN=https://freclean.com`, `DATABASE_URL`, authentication secrets, payment secrets and addresses when payment modules are used, and a random 32-character-or-longer `ENQUIRY_SPAM_SECRET`. The endpoint does not require payment configuration, but production startup continues to validate the core service's existing required configuration.
+In production, CORS is restricted to the exact origin `https://freclean.com`. The production deployment must set `CORS_ORIGIN=https://freclean.com`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, and a random 32-character-or-longer `ENQUIRY_SPAM_SECRET`. Card credentials are required only when `CARD_PAYMENTS_ENABLED=true`; crypto configuration is required only when `CRYPTO_PAYMENTS_ENABLED=true`. Disabled payment integrations remain unavailable and fail closed.
 
-Apply migration `database/migrations/0003_public-enquiries.sql` before starting the API. Deployments must terminate TLS at the public HTTPS edge, expose `/health` and `/health/ready`, and run a real HTTPS smoke test before reporting the endpoint deployed. The Render core service is `https://freclean.onrender.com`; configure its Render Health Check Path as `/health`.
+Apply migrations `database/migrations/0003_public-enquiries.sql` and `database/migrations/0004_public-enquiry-fields.sql` before starting the API. Migration 0004 is additive and does not delete existing public enquiry rows. Deployments must terminate TLS at the public HTTPS edge, expose `/health` and `/health/ready`, and run a real HTTPS smoke test before reporting the endpoint deployed. The Render core service is `https://freclean.onrender.com`; configure its Render Health Check Path as `/health`.
 
 ## Environment and deployment
 

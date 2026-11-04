@@ -38,15 +38,24 @@ try {
   const enquiryIndexes = (await pool.query(
     "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'public_enquiries' ORDER BY indexname"
   )).rows.map((row) => row.indexname);
+  const requiredEnquiryColumns = [
+    "property_type", "space_size", "requested_date", "requested_time",
+    "location", "notes", "payment_method",
+  ];
+  const publicEnquiryColumns = (await pool.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'public_enquiries' ORDER BY column_name"
+  )).rows.map((row) => row.column_name);
+  const missingEnquiryColumns = requiredEnquiryColumns.filter((column) => !publicEnquiryColumns.includes(column));
 
   console.log(JSON.stringify({
     applied,
     pending,
     requiredTables,
     publicEnquiryIndexes: enquiryIndexes,
+    missingEnquiryColumns,
   }));
 
-  if (pending.length > 0 || requiredTables.length !== 2) process.exitCode = 1;
+  if (pending.length > 0 || requiredTables.length !== 2 || missingEnquiryColumns.length > 0) process.exitCode = 1;
 } finally {
   await pool.end();
 }

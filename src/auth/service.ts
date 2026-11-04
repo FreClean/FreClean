@@ -93,7 +93,7 @@ export function refreshAccessToken(refreshToken: string) {
   const secret = getJwtSecret("JWT_REFRESH_SECRET");
   const payload = jwt.verify(refreshToken, secret);
 
-  if (typeof payload === "string" || typeof payload.sub !== "string" || !Array.isArray(payload.roles)) {
+  if (typeof payload === "string" || typeof payload.sub !== "string" || payload.type !== "refresh" || !Array.isArray(payload.roles)) {
     throw Object.assign(new Error("Invalid refresh token"), { status: 401 });
   }
 

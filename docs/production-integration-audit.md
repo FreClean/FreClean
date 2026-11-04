@@ -29,6 +29,7 @@ This audit covers the FreClean core repository and read-only production smoke ch
 
 - `/health` returned HTTP 200 with `{"status":"ok"}` from the Render service during production smoke testing.
 - `/health/ready` is implemented as a fail-closed `SELECT 1` check and returns 503 with a generic database status on failure.
+- A live HTTPS smoke check on 2026-11-04 returned HTTP 200 from `/health` and HTTP 503 from `/health/ready`; this confirms liveness but not database readiness or successful production persistence.
 - The production readiness smoke check previously returned HTTP 503. This proves the endpoint detected an unavailable database at that time, but it does not prove subsequent recovery.
 - A fresh readiness smoke check timed out at the client's 20-second limit. The readiness implementation now limits the database check itself to five seconds and returns HTTP 503 instead of hanging.
 - `/` now returns HTTP 200 with `{"status":"ok"}`; it is a minimal service liveness signal, not an API inventory or internal status page.

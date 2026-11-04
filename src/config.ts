@@ -4,11 +4,6 @@ const requiredInProduction = [
   "JWT_REFRESH_SECRET",
   "CORS_ORIGIN",
   "ENQUIRY_SPAM_SECRET",
-  "CARD_PROCESSOR_API_KEY",
-  "CARD_PROCESSOR_WEBHOOK_SECRET",
-  "CELO_RPC_URL",
-  "USDM_CONTRACT_ADDRESS",
-  "CELO_RECEIVING_ADDRESS",
 ] as const;
 
 const minimumSecretLength = 32;
@@ -20,6 +15,22 @@ export function validateEnvironment() {
     const missing = requiredInProduction.filter((name) => !String(process.env[name] ?? "").trim());
     if (missing.length > 0) {
       throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+    }
+
+    if (process.env.CARD_PAYMENTS_ENABLED === "true") {
+      const missingCard = ["CARD_PROCESSOR_API_KEY", "CARD_PROCESSOR_WEBHOOK_SECRET"]
+        .filter((name) => !String(process.env[name] ?? "").trim());
+      if (missingCard.length > 0) {
+        throw new Error(`Card payments require: ${missingCard.join(", ")}`);
+      }
+    }
+
+    if (process.env.CRYPTO_PAYMENTS_ENABLED === "true") {
+      const missingCrypto = ["CELO_RPC_URL", "USDM_CONTRACT_ADDRESS", "CELO_RECEIVING_ADDRESS"]
+        .filter((name) => !String(process.env[name] ?? "").trim());
+      if (missingCrypto.length > 0) {
+        throw new Error(`Crypto payments require: ${missingCrypto.join(", ")}`);
+      }
     }
 
     const invalidSecrets = ["JWT_ACCESS_SECRET", "JWT_REFRESH_SECRET", "ENQUIRY_SPAM_SECRET", "CARD_PROCESSOR_WEBHOOK_SECRET"]
