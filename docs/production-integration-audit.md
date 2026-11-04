@@ -67,6 +67,35 @@ This audit covers the FreClean core repository and read-only production smoke ch
 - Readiness database failures return generic HTTP 503 data without connection strings, hosts, or credentials.
 - Pino structured request logging is enabled; expected validation and readiness failures remain logged without response credential disclosure.
 
+## PostgreSQL and Migration Verification
+
+### Root cause and code changes
+
+- Before the fix, the `pg` pool had no connection, query, statement, or idle timeout.
+- The readiness handler could therefore wait on an unbounded pool connection attempt, and prior smoke checks waited until the HTTP client timed out.
+- The readiness handler now races `SELECT 1` against a five-second timeout, while `src/db.ts` sets a five-second connection timeout, five-second query/statement timeout, and a 30-second idle timeout.
+- Supabase/Postgres pooler hostnames now receive explicit TLS configuration when `sslmode` is not already present in `DATABASE_URL`; existing `sslmode` settings remain authoritative, and certificate verification remains enabled.
+- The migration runner and migration verifier use the same five-second connection/query bounds and hosted PostgreSQL TLS behavior.
+- Readiness failures log only a database error code category or timeout label, never the connection string, host, username, or response PII.
+
+### Local verification
+
+- Docker PostgreSQL 16 started from the repository Compose configuration.
+- `npm run db:migrate` applied `0001_init.sql`, `0002_disputes.sql`, and `0003_public-enquiries.sql` successfully.
+- `npm run db:verify` can report applied migrations, pending migrations, required table presence, and enquiry indexes.
+- Direct local verification found the four required enquiry structures: `public_enquiries_pkey`, `idx_public_enquiries_created`, `idx_public_enquiries_status_created`, and `idx_public_enquiries_recent_spam_hash`.
+- A real parameterized insert was executed inside a transaction and read back by its UUID; the transaction then rolled back. The cleanup left zero audit test rows (`integration-audit-only`).
+
+This is real local PostgreSQL write/read-back verification, not production persistence verification.
+
+### Production connectivity result
+
+- The latest deployed liveness check returns HTTP 200.
+- The latest deployed readiness check returns HTTP 503 with `{"status":"unavailable","database":"unavailable"}` instead of hanging.
+- Production PostgreSQL connectivity remains unverified as successful.
+- Production migration state remains unverified because the Render credential environment cannot be accessed safely from this workspace.
+- The report does not claim a Supabase-compatible `DATABASE_URL` until the Render hostname, pool mode, SSL mode, and actual query success are verified from the deployment environment.
+
 ## Unverified Functionality
 
 The following could not be confirmed without exposing or obtaining production credentials and without creating production data:

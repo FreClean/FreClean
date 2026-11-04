@@ -45,7 +45,7 @@ app.use(pinoHttp());
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
-app.get("/health/ready", async (_req, res) => {
+app.get("/health/ready", async (req, res) => {
   let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
@@ -55,7 +55,9 @@ app.get("/health/ready", async (_req, res) => {
       }),
     ]);
     res.json({ status: "ok", database: "ok" });
-  } catch {
+  } catch (error) {
+    const databaseError = error as { code?: string };
+    req.log?.warn({ databaseErrorCode: databaseError.code ?? "timeout_or_connection_error" }, "Database readiness check failed");
     res.status(503).json({ status: "unavailable", database: "unavailable" });
   } finally {
     if (timeoutHandle) clearTimeout(timeoutHandle);

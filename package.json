@@ -19,6 +19,7 @@
     "db:down": "docker compose down",
     "db:logs": "docker compose logs -f postgres",
     "db:migrate": "node scripts/migrate.js up",
+    "db:verify": "node scripts/verify-migrations.js",
     "check:repository": "node scripts/validate-repository.js"
   },
   "dependencies": {
