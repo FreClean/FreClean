@@ -67,13 +67,7 @@ export async function updatePublicEnquiryStatus(
 }
 
 export async function createPublicEnquiry(input: PublicEnquiryInput): Promise<string> {
-  const recent = await query<{ id: string }>(
-    `SELECT id FROM public_enquiries
-     WHERE spam_hash = $1 AND created_at > now() - interval '10 minutes'
-     LIMIT 1`,
-    [input.spamHash]
-  );
-  if (recent.length > 0) {
+  if (await hasRecentPublicEnquiry(input.spamHash)) {
     throw Object.assign(new Error("Duplicate request"), { status: 409 });
   }
 
@@ -100,4 +94,14 @@ export async function createPublicEnquiry(input: PublicEnquiryInput): Promise<st
   } finally {
     client.release();
   }
+}
+
+export async function hasRecentPublicEnquiry(spamHash: string): Promise<boolean> {
+  const recent = await query<{ id: string }>(
+    `SELECT id FROM public_enquiries
+     WHERE spam_hash = $1 AND created_at > now() - interval '10 minutes'
+     LIMIT 1`,
+    [spamHash]
+  );
+  return recent.length > 0;
 }

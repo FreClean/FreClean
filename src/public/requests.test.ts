@@ -9,7 +9,10 @@ vi.mock("../db.js", () => ({
 const createPublicEnquiry = vi.fn();
 const listPublicEnquiries = vi.fn();
 const updatePublicEnquiryStatus = vi.fn();
-vi.mock("./service.js", () => ({ createPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus }));
+const hasRecentPublicEnquiry = vi.fn();
+const sendPublicEnquiryEmail = vi.fn();
+vi.mock("./service.js", () => ({ createPublicEnquiry, hasRecentPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus }));
+vi.mock("./email.js", () => ({ sendPublicEnquiryEmail }));
 
 let app: import("express").Express;
 
@@ -24,7 +27,11 @@ beforeEach(() => {
   createPublicEnquiry.mockReset();
   listPublicEnquiries.mockReset();
   updatePublicEnquiryStatus.mockReset();
+  hasRecentPublicEnquiry.mockReset();
+  sendPublicEnquiryEmail.mockReset();
   createPublicEnquiry.mockResolvedValue("9f1d3f6f-7ab8-44aa-b23f-0a8d0e0c9ad1");
+  hasRecentPublicEnquiry.mockResolvedValue(false);
+  sendPublicEnquiryEmail.mockResolvedValue(undefined);
 });
 
 const validBody = {
@@ -107,6 +114,16 @@ describe("POST /api/public/requests", () => {
     const response = await request(app).post("/api/public/requests").send(validBody);
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: "Internal server error" });
+    expect(response.body.received).toBeUndefined();
+  });
+
+  it("does not confirm an enquiry when Resend rejects it", async () => {
+    sendPublicEnquiryEmail.mockRejectedValue(Object.assign(new Error("provider rejected"), { status: 502 }));
+
+    const response = await request(app).post("/api/public/requests").send(validBody);
+
+    expect(response.status).toBe(502);
+    expect(response.body).toEqual({ error: "provider rejected" });
     expect(response.body.received).toBeUndefined();
   });
 

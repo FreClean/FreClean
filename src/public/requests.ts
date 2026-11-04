@@ -2,7 +2,8 @@ import { createHmac } from "node:crypto";
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
-import { createPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus } from "./service.js";
+import { createPublicEnquiry, hasRecentPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus } from "./service.js";
+import { sendPublicEnquiryEmail } from "./email.js";
 import { requireAuthentication, requirePermission } from "../auth/middleware.js";
 
 const cleanText = z.string().transform((value) => value.trim().replace(/[\u0000-\u001F\u007F]/g, " "));
@@ -90,7 +91,7 @@ publicRequestsRouter.post("/requests", publicRequestLimiter, async (req, res, ne
       .update(spamSeed)
       .digest("hex");
 
-    const requestId = await createPublicEnquiry({
+    const enquiry = {
       type: body.type ?? "SERVICE",
       fullName,
       email: body.email,
@@ -106,7 +107,24 @@ publicRequestsRouter.post("/requests", publicRequestLimiter, async (req, res, ne
       message,
       spamHash,
       sourceOrigin,
+    };
+    if (await hasRecentPublicEnquiry(spamHash)) {
+      throw Object.assign(new Error("Duplicate request"), { status: 409 });
+    }
+    await sendPublicEnquiryEmail({
+      fullName,
+      email: body.email,
+      phone: body.phone,
+      service: body.service,
+      propertyType: body.property_type,
+      spaceSize: body.space_size,
+      date: body.date,
+      time: body.time,
+      location: body.location,
+      paymentMethod: body.payment_method,
+      message,
     });
+    const requestId = await createPublicEnquiry(enquiry);
     res.status(201).json({ received: true, requestId });
   } catch (error) {
     next(error);

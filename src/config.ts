@@ -4,6 +4,8 @@ const requiredInProduction = [
   "JWT_REFRESH_SECRET",
   "CORS_ORIGIN",
   "ENQUIRY_SPAM_SECRET",
+  "RESEND_API_KEY",
+  "RESEND_FROM_EMAIL",
 ] as const;
 
 const minimumSecretLength = 32;
