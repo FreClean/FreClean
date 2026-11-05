@@ -43,19 +43,22 @@ describe("critical production API boundaries", () => {
 
   it("rejects unauthenticated booking and cash workflows", async () => {
     const booking = await request(app).post("/api/bookings/").send({});
+    const versionedBooking = await request(app).post("/api/v1/bookings/").send({});
     const cash = await request(app).post("/api/payments/cash").send({});
 
     expect(booking.status).toBe(401);
+    expect(versionedBooking.status).toBe(401);
     expect(cash.status).toBe(401);
   });
 
   it("rejects invalid JWTs and accepts correctly signed customer identity", async () => {
     const secret = process.env.JWT_ACCESS_SECRET!;
     const validToken = jwt.sign({ roles: ["CUSTOMER"] }, secret, { subject: "customer-1" });
+    const invalidToken = "sensitive-test-token";
 
     const invalid = await request(app)
       .post("/api/bookings/")
-      .set("Authorization", "Bearer invalid-token")
+      .set("Authorization", `Bearer ${invalidToken}`)
       .send({});
     const missing = await request(app)
       .post("/api/bookings/")

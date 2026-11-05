@@ -3,6 +3,7 @@ import express from "express";
 import helmet from "helmet";
 import cors from "cors";
 import rateLimit from "express-rate-limit";
+import pino from "pino";
 import { pinoHttp } from "pino-http";
 
 import { authRouter } from "./auth/router.js";
@@ -41,7 +42,13 @@ app.use(express.json({
     }
   },
 }));
-app.use(pinoHttp());
+const requestLogger = pino({
+  redact: {
+    paths: ["req.headers.authorization", "req.headers.cookie"],
+    censor: "[Redacted]",
+  },
+});
+app.use(pinoHttp({ logger: requestLogger }));
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, max: 300 }));
 
 app.get("/", (_req, res) => res.json({ status: "ok" }));
@@ -65,6 +72,15 @@ app.get("/health/ready", async (req, res) => {
   }
 });
 
+const apiV1Router = express.Router();
+apiV1Router.use("/auth", authRouter);
+apiV1Router.use("/bookings", bookingsRouter);
+apiV1Router.use("/public", publicRequestsRouter);
+apiV1Router.use("/payments", paymentsRouter);
+apiV1Router.use("/disputes", disputesRouter);
+app.use("/api/v1", apiV1Router);
+
+// Keep existing clients working while they move to the versioned API.
 app.use("/api/auth", authRouter);
 app.use("/api/bookings", bookingsRouter);
 app.use("/api/public", publicRequestsRouter);
