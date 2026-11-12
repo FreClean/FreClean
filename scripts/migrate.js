@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import pg from "pg";
 import "dotenv/config";
+import { getPostgresConnectionConfig } from "../src/postgres-connection.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const migrationsDir = path.join(__dirname, "..", "database", "migrations");
@@ -13,15 +14,10 @@ const migrationsDir = path.join(__dirname, "..", "database", "migrations");
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL is not set");
 
-  const connectionString = process.env.DATABASE_URL;
-  let hostedPostgres = false;
-  try {
-    const hostname = new URL(connectionString).hostname.toLowerCase();
-    hostedPostgres = hostname.includes("supabase.co") || hostname.includes("pooler.supabase.com");
-  } catch {
-    hostedPostgres = false;
-  }
-  const hasExplicitSslMode = /([?&])sslmode=/i.test(connectionString);
+  const { connectionString, ssl } = getPostgresConnectionConfig(
+    process.env.DATABASE_URL,
+    process.env.SUPABASE_CA_CERT,
+  );
 
   const pool = new pg.Pool({
     connectionString,
@@ -29,7 +25,7 @@ async function main() {
     idleTimeoutMillis: 30000,
     query_timeout: 5000,
     statement_timeout: 5000,
-    ...(hostedPostgres && !hasExplicitSslMode ? { ssl: { rejectUnauthorized: true } } : {}),
+    ...(ssl ? { ssl } : {}),
   });
   await pool.query(`CREATE TABLE IF NOT EXISTS schema_migrations (name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ DEFAULT now())`);
 
@@ -55,6 +51,11 @@ async function main() {
 }
 
 main().catch((err) => {
-  console.error(err);
+  if (err?.code === "SUPABASE_CA_CERT_REQUIRED" || err?.code === "SUPABASE_CA_CERT_INVALID") {
+    console.error(err.message);
+  } else {
+    const code = typeof err?.code === "string" ? ` (${err.code})` : "";
+    console.error(`Migration failed${code}.`);
+  }
   process.exit(1);
 });

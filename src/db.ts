@@ -1,25 +1,14 @@
 import { Pool } from "pg";
+import { getPostgresConnectionConfig } from "./postgres-connection.js";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is not set");
 }
 
-function usesHostedPostgres(connectionString: string): boolean {
-  try {
-    const hostname = new URL(connectionString).hostname.toLowerCase();
-    return hostname.includes("supabase.co")
-      || hostname.includes("pooler.supabase.com")
-      || hostname.endsWith(".render.com");
-  } catch {
-    return false;
-  }
-}
-
-const connectionString = process.env.DATABASE_URL;
-const hasExplicitSslMode = /([?&])sslmode=/i.test(connectionString);
-const ssl = hasExplicitSslMode || !usesHostedPostgres(connectionString)
-  ? undefined
-  : { rejectUnauthorized: true };
+const { connectionString, ssl } = getPostgresConnectionConfig(
+  process.env.DATABASE_URL,
+  process.env.SUPABASE_CA_CERT,
+);
 
 export const pool = new Pool({
   connectionString,

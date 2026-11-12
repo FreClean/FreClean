@@ -36,7 +36,7 @@ describe("health endpoints", () => {
     expect(response.body).toEqual({ status: "ok" });
   });
 
-  it("returns 200 when PostgreSQL is reachable", async () => {
+  it("returns 200 when PostgreSQL successfully answers SELECT 1", async () => {
     poolQuery.mockResolvedValue({ rows: [{ "?column?": 1 }] });
 
     const response = await request(app).get("/health/ready");
