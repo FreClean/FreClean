@@ -7,7 +7,9 @@ if (!process.env.DATABASE_URL) {
 function usesHostedPostgres(connectionString: string): boolean {
   try {
     const hostname = new URL(connectionString).hostname.toLowerCase();
-    return hostname.includes("supabase.co") || hostname.includes("pooler.supabase.com");
+    return hostname.includes("supabase.co")
+      || hostname.includes("pooler.supabase.com")
+      || hostname.endsWith(".render.com");
   } catch {
     return false;
   }
