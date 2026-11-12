@@ -9,9 +9,8 @@ vi.mock("../db.js", () => ({
 const createPublicEnquiry = vi.fn();
 const listPublicEnquiries = vi.fn();
 const updatePublicEnquiryStatus = vi.fn();
-const hasRecentPublicEnquiry = vi.fn();
 const sendPublicEnquiryEmail = vi.fn();
-vi.mock("./service.js", () => ({ createPublicEnquiry, hasRecentPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus }));
+vi.mock("./service.js", () => ({ createPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus }));
 vi.mock("./email.js", () => ({ sendPublicEnquiryEmail }));
 
 let app: import("express").Express;
@@ -27,10 +26,8 @@ beforeEach(() => {
   createPublicEnquiry.mockReset();
   listPublicEnquiries.mockReset();
   updatePublicEnquiryStatus.mockReset();
-  hasRecentPublicEnquiry.mockReset();
   sendPublicEnquiryEmail.mockReset();
   createPublicEnquiry.mockResolvedValue("9f1d3f6f-7ab8-44aa-b23f-0a8d0e0c9ad1");
-  hasRecentPublicEnquiry.mockResolvedValue(false);
   sendPublicEnquiryEmail.mockResolvedValue(undefined);
 });
 
@@ -78,6 +75,11 @@ describe("POST /api/public/requests", () => {
       location: "Santo Domingo",
       notes: "Please include kitchen and balcony cleaning.",
       paymentMethod: "Cash",
+      type: "SERVICE",
+    }));
+    expect(sendPublicEnquiryEmail).toHaveBeenCalledWith(expect.objectContaining({
+      type: "SERVICE",
+      notes: "Please include kitchen and balcony cleaning.",
     }));
   });
 
@@ -115,6 +117,7 @@ describe("POST /api/public/requests", () => {
     expect(response.status).toBe(500);
     expect(response.body).toEqual({ error: "Internal server error" });
     expect(response.body.received).toBeUndefined();
+    expect(sendPublicEnquiryEmail).not.toHaveBeenCalled();
   });
 
   it("does not confirm an enquiry when Resend rejects it", async () => {
@@ -125,6 +128,17 @@ describe("POST /api/public/requests", () => {
     expect(response.status).toBe(502);
     expect(response.body).toEqual({ error: "provider rejected" });
     expect(response.body.received).toBeUndefined();
+    expect(createPublicEnquiry).toHaveBeenCalledOnce();
+    expect(createPublicEnquiry.mock.invocationCallOrder[0]).toBeLessThan(sendPublicEnquiryEmail.mock.invocationCallOrder[0]!);
+  });
+
+  it("does not send email or persist when the enquiry is a duplicate", async () => {
+    createPublicEnquiry.mockRejectedValue(Object.assign(new Error("Duplicate request"), { status: 409 }));
+
+    const response = await request(app).post("/api/public/requests").send(validBody);
+
+    expect(response.status).toBe(409);
+    expect(sendPublicEnquiryEmail).not.toHaveBeenCalled();
   });
 
   it("applies production CORS behavior to allowed and disallowed origins", async () => {

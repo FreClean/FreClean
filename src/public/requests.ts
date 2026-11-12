@@ -2,7 +2,7 @@ import { createHmac } from "node:crypto";
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
-import { createPublicEnquiry, hasRecentPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus } from "./service.js";
+import { createPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus } from "./service.js";
 import { sendPublicEnquiryEmail } from "./email.js";
 import { requireAuthentication, requirePermission } from "../auth/middleware.js";
 
@@ -108,10 +108,9 @@ publicRequestsRouter.post("/requests", publicRequestLimiter, async (req, res, ne
       spamHash,
       sourceOrigin,
     };
-    if (await hasRecentPublicEnquiry(spamHash)) {
-      throw Object.assign(new Error("Duplicate request"), { status: 409 });
-    }
+    const requestId = await createPublicEnquiry(enquiry);
     await sendPublicEnquiryEmail({
+      type: body.type ?? "SERVICE",
       fullName,
       email: body.email,
       phone: body.phone,
@@ -122,9 +121,9 @@ publicRequestsRouter.post("/requests", publicRequestLimiter, async (req, res, ne
       time: body.time,
       location: body.location,
       paymentMethod: body.payment_method,
+      notes: body.notes,
       message,
     });
-    const requestId = await createPublicEnquiry(enquiry);
     res.status(201).json({ received: true, requestId });
   } catch (error) {
     next(error);

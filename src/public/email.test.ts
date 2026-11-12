@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { sendPublicEnquiryEmail } from "./email.js";
 
 const enquiry = {
+  type: "SERVICE" as const,
   fullName: "Jean Pierre",
   email: "jean@example.com",
   service: "Residential cleaning",
@@ -11,11 +12,13 @@ const enquiry = {
 describe("public enquiry email delivery", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    delete process.env.CONTACT_EMAIL;
     delete process.env.RESEND_API_KEY;
     delete process.env.RESEND_FROM_EMAIL;
   });
 
-  it("sends the enquiry to the configured Resend sender and fixed business inbox", async () => {
+  it("sends a timestamped customer enquiry to the configured inbox with a safe HTML template", async () => {
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
     process.env.RESEND_API_KEY = "re_test_key";
     process.env.RESEND_FROM_EMAIL = "FreClean <enquiries@example.com>";
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
@@ -23,20 +26,49 @@ describe("public enquiry email delivery", () => {
 
     await sendPublicEnquiryEmail(enquiry);
 
+    const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    const body = JSON.parse(String(requestInit.body));
+    expect(body).toEqual(expect.objectContaining({
+      to: ["contact@freclean.com"],
+      reply_to: "jean@example.com",
+      subject: "New FreClean enquiry from Jean Pierre",
+      text: expect.stringMatching(/^Enquiry type: SERVICE\nName: Jean Pierre\nEmail: jean@example\.com\nService: Residential cleaning\nSubmitted at: .+\n\nI would like a cleaning estimate for my home\.$/),
+      html: expect.stringContaining("New FreClean enquiry"),
+    }));
+    expect(body.from).toBe("FreClean <enquiries@example.com>");
+    expect(body.html).toContain("Submitted at");
+    expect(body.html).not.toContain("<script>");
     expect(fetchMock).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({
       method: "POST",
       headers: expect.objectContaining({ Authorization: "Bearer re_test_key" }),
-      body: JSON.stringify({
-        from: "FreClean <enquiries@example.com>",
-        to: ["freclean7@gmail.com"],
-        reply_to: "jean@example.com",
-        subject: "New FreClean enquiry from Jean Pierre",
-        text: "Name: Jean Pierre\nEmail: jean@example.com\nService: Residential cleaning\n\nI would like a cleaning estimate for my home.",
-      }),
     }));
   });
 
+  it("preserves enquiry type and notes while escaping customer content in HTML", async () => {
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.RESEND_FROM_EMAIL = "FreClean <enquiries@example.com>";
+    const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendPublicEnquiryEmail({
+      ...enquiry,
+      type: "CONTACT",
+      notes: "Please call after 3pm.",
+      message: "<script>alert(1)</script>",
+    });
+
+    const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.text).toContain("Enquiry type: CONTACT");
+    expect(body.text).toContain("Additional notes: Please call after 3pm.");
+    expect(body.html).toContain("Enquiry type");
+    expect(body.html).toContain("Additional notes");
+    expect(body.html).toContain("&lt;script&gt;alert(1)&lt;/script&gt;");
+    expect(body.html).not.toContain("<script>");
+  });
+
   it("converts provider failures into a non-success response error", async () => {
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
     process.env.RESEND_API_KEY = "re_test_key";
     process.env.RESEND_FROM_EMAIL = "FreClean <enquiries@example.com>";
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 422 })));

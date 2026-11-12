@@ -2,6 +2,7 @@ const requiredInProduction = [
   "DATABASE_URL",
   "JWT_ACCESS_SECRET",
   "JWT_REFRESH_SECRET",
+  "CONTACT_EMAIL",
   "CORS_ORIGIN",
   "ENQUIRY_SPAM_SECRET",
   "RESEND_API_KEY",
@@ -17,6 +18,10 @@ export function validateEnvironment() {
     const missing = requiredInProduction.filter((name) => !String(process.env[name] ?? "").trim());
     if (missing.length > 0) {
       throw new Error(`Missing required production environment variables: ${missing.join(", ")}`);
+    }
+
+    if (process.env.CONTACT_EMAIL?.trim().toLowerCase() !== "contact@freclean.com") {
+      throw new Error("CONTACT_EMAIL must be contact@freclean.com in production");
     }
 
     if (process.env.CARD_PAYMENTS_ENABLED === "true") {

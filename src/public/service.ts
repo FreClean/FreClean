@@ -67,13 +67,20 @@ export async function updatePublicEnquiryStatus(
 }
 
 export async function createPublicEnquiry(input: PublicEnquiryInput): Promise<string> {
-  if (await hasRecentPublicEnquiry(input.spamHash)) {
-    throw Object.assign(new Error("Duplicate request"), { status: 409 });
-  }
-
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
+    await client.query("SELECT pg_advisory_xact_lock(hashtextextended($1, 0))", [input.spamHash]);
+    const recent = await client.query(
+      `SELECT id FROM public_enquiries
+       WHERE spam_hash = $1 AND created_at > now() - interval '10 minutes'
+       LIMIT 1`,
+      [input.spamHash]
+    );
+    if (recent.rows.length > 0) {
+      throw Object.assign(new Error("Duplicate request"), { status: 409 });
+    }
+
     const inserted = await client.query(
       `INSERT INTO public_enquiries
         (enquiry_type, full_name, email, phone, service, property_type, space_size,
@@ -94,14 +101,4 @@ export async function createPublicEnquiry(input: PublicEnquiryInput): Promise<st
   } finally {
     client.release();
   }
-}
-
-export async function hasRecentPublicEnquiry(spamHash: string): Promise<boolean> {
-  const recent = await query<{ id: string }>(
-    `SELECT id FROM public_enquiries
-     WHERE spam_hash = $1 AND created_at > now() - interval '10 minutes'
-     LIMIT 1`,
-    [spamHash]
-  );
-  return recent.length > 0;
 }

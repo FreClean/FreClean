@@ -89,7 +89,11 @@ app.use("/api/disputes", disputesRouter);
 
 // Central error handler — never leak internals to the client.
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  req.log?.error(err);
+  req.log?.error({
+    errorType: typeof err?.name === "string" ? err.name : "Error",
+    errorCode: typeof err?.code === "string" ? err.code : undefined,
+    statusCode: err?.status ?? 500,
+  }, "Request failed");
   if (err instanceof ZodError) {
     return res.status(400).json({ error: "Invalid request", details: err.flatten().fieldErrors });
   }

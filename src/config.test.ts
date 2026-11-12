@@ -2,12 +2,13 @@ import { describe, expect, it } from "vitest";
 import { validateEnvironment } from "./config.js";
 
 describe("production environment validation", () => {
-  it("requires core production configuration when payment integrations are disabled", () => {
+  it("requires core production configuration and the official inbox when payments are disabled", () => {
     const previous = { ...process.env };
     process.env.NODE_ENV = "production";
     process.env.DATABASE_URL = "postgres://user:pass@localhost:5432/freclean";
     process.env.JWT_ACCESS_SECRET = "1234567890abcdef1234567890abcdef";
     process.env.JWT_REFRESH_SECRET = "";
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
     process.env.ENQUIRY_SPAM_SECRET = "1234567890abcdef1234567890abcdef";
     process.env.CORS_ORIGIN = "https://freclean.com";
     process.env.RESEND_API_KEY = "re_test_key";
@@ -18,10 +19,17 @@ describe("production environment validation", () => {
 
     expect(() => validateEnvironment()).toThrow(/JWT_REFRESH_SECRET/);
 
+    process.env.JWT_REFRESH_SECRET = "abcdef1234567890abcdef1234567890";
+    process.env.CARD_PROCESSOR_WEBHOOK_SECRET = "abcdef1234567890abcdef1234567890";
+    process.env.CONTACT_EMAIL = "enquiries@example.com";
+    expect(() => validateEnvironment()).toThrow(/CONTACT_EMAIL must be contact@freclean\.com/);
+
     process.env.NODE_ENV = previous.NODE_ENV;
     process.env.DATABASE_URL = previous.DATABASE_URL;
     process.env.JWT_ACCESS_SECRET = previous.JWT_ACCESS_SECRET;
     process.env.JWT_REFRESH_SECRET = previous.JWT_REFRESH_SECRET;
+    if (previous.CONTACT_EMAIL === undefined) delete process.env.CONTACT_EMAIL;
+    else process.env.CONTACT_EMAIL = previous.CONTACT_EMAIL;
     process.env.ENQUIRY_SPAM_SECRET = previous.ENQUIRY_SPAM_SECRET;
     process.env.CORS_ORIGIN = previous.CORS_ORIGIN;
     process.env.RESEND_API_KEY = previous.RESEND_API_KEY;
@@ -39,6 +47,7 @@ describe("production environment validation", () => {
     process.env.DATABASE_URL = "postgres://user:pass@localhost:5432/freclean";
     process.env.JWT_ACCESS_SECRET = "1234567890abcdef1234567890abcdef";
     process.env.JWT_REFRESH_SECRET = "abcdef1234567890abcdef1234567890";
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
     process.env.ENQUIRY_SPAM_SECRET = "1234567890abcdef1234567890abcdef";
     process.env.CORS_ORIGIN = "https://freclean.com";
     process.env.RESEND_API_KEY = "re_test_key";
@@ -58,6 +67,8 @@ describe("production environment validation", () => {
     process.env.DATABASE_URL = previous.DATABASE_URL;
     process.env.JWT_ACCESS_SECRET = previous.JWT_ACCESS_SECRET;
     process.env.JWT_REFRESH_SECRET = previous.JWT_REFRESH_SECRET;
+    if (previous.CONTACT_EMAIL === undefined) delete process.env.CONTACT_EMAIL;
+    else process.env.CONTACT_EMAIL = previous.CONTACT_EMAIL;
     process.env.ENQUIRY_SPAM_SECRET = previous.ENQUIRY_SPAM_SECRET;
     process.env.CORS_ORIGIN = previous.CORS_ORIGIN;
     if (previous.RESEND_API_KEY === undefined) delete process.env.RESEND_API_KEY;

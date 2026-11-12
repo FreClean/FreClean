@@ -1,6 +1,5 @@
-const enquiryRecipient = "freclean7@gmail.com";
-
 export interface PublicEnquiryEmail {
+  type: "SERVICE" | "CONTACT";
   fullName: string;
   email: string;
   phone?: string;
@@ -11,32 +10,55 @@ export interface PublicEnquiryEmail {
   time?: string;
   location?: string;
   paymentMethod?: string;
+  notes?: string;
   message: string;
 }
 
-function requiredEnvironment(name: "RESEND_API_KEY" | "RESEND_FROM_EMAIL"): string {
+function requiredEnvironment(name: "CONTACT_EMAIL" | "RESEND_API_KEY" | "RESEND_FROM_EMAIL"): string {
   const value = process.env[name]?.trim();
   if (!value) throw new Error(`${name} is not configured`);
   return value;
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#39;",
+  })[character]!);
+}
+
 export async function sendPublicEnquiryEmail(enquiry: PublicEnquiryEmail): Promise<void> {
+  const to = requiredEnvironment("CONTACT_EMAIL");
   const apiKey = requiredEnvironment("RESEND_API_KEY");
   const from = requiredEnvironment("RESEND_FROM_EMAIL");
+  const submittedAt = new Date().toISOString();
+  const fields: Array<[string, string | undefined]> = [
+    ["Enquiry type", enquiry.type],
+    ["Name", enquiry.fullName],
+    ["Email", enquiry.email],
+    ["Phone", enquiry.phone],
+    ["Service", enquiry.service],
+    ["Property type", enquiry.propertyType],
+    ["Space size", enquiry.spaceSize],
+    ["Requested date", enquiry.date],
+    ["Requested time", enquiry.time],
+    ["Location", enquiry.location],
+    ["Payment method", enquiry.paymentMethod],
+    ["Additional notes", enquiry.notes === enquiry.message ? undefined : enquiry.notes],
+  ];
   const lines = [
-    `Name: ${enquiry.fullName}`,
-    `Email: ${enquiry.email}`,
-    enquiry.phone ? `Phone: ${enquiry.phone}` : undefined,
-    enquiry.service ? `Service: ${enquiry.service}` : undefined,
-    enquiry.propertyType ? `Property type: ${enquiry.propertyType}` : undefined,
-    enquiry.spaceSize ? `Space size: ${enquiry.spaceSize}` : undefined,
-    enquiry.date ? `Requested date: ${enquiry.date}` : undefined,
-    enquiry.time ? `Requested time: ${enquiry.time}` : undefined,
-    enquiry.location ? `Location: ${enquiry.location}` : undefined,
-    enquiry.paymentMethod ? `Payment method: ${enquiry.paymentMethod}` : undefined,
+    ...fields.filter((field): field is [string, string] => Boolean(field[1])).map(([label, value]) => `${label}: ${value}`),
+    `Submitted at: ${submittedAt}`,
     "",
     enquiry.message,
-  ].filter((line): line is string => line !== undefined);
+  ];
+  const htmlRows = fields
+    .filter((field): field is [string, string] => Boolean(field[1]))
+    .map(([label, value]) => `<tr><th align="left">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
+    .join("");
 
   let response: Response;
   try {
@@ -48,10 +70,11 @@ export async function sendPublicEnquiryEmail(enquiry: PublicEnquiryEmail): Promi
       },
       body: JSON.stringify({
         from,
-        to: [enquiryRecipient],
+        to: [to],
         reply_to: enquiry.email,
         subject: `New FreClean enquiry from ${enquiry.fullName}`,
         text: lines.join("\n"),
+        html: `<div style="font-family:Arial,sans-serif;color:#1f2937;max-width:640px;margin:auto"><div style="background:#0f766e;color:#fff;padding:20px 24px"><h1 style="margin:0;font-size:22px">New FreClean enquiry</h1></div><div style="padding:24px"><p>A customer has submitted an enquiry through the FreClean website.</p><table style="border-collapse:collapse;width:100%">${htmlRows}<tr><th align="left">Submitted at</th><td>${escapeHtml(submittedAt)} UTC</td></tr></table><h2 style="font-size:16px;margin-top:24px">Message</h2><p style="white-space:pre-wrap">${escapeHtml(enquiry.message)}</p><p style="color:#6b7280;font-size:12px">Reply directly to this email to respond to ${escapeHtml(enquiry.fullName)}.</p></div></div>`,
       }),
       signal: AbortSignal.timeout(10_000),
     });

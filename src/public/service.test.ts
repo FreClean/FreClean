@@ -20,9 +20,10 @@ describe("createPublicEnquiry", () => {
   });
 
   it("returns the UUID only after the insert commits", async () => {
-    query.mockResolvedValue([]);
     client.query
       .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [{ id: "7cc74c7e-4d65-4ac6-a6f7-9f5c019b6df8" }] })
       .mockResolvedValueOnce({});
     const { createPublicEnquiry } = await import("./service.js");
@@ -40,16 +41,40 @@ describe("createPublicEnquiry", () => {
     expect(id).toBe("7cc74c7e-4d65-4ac6-a6f7-9f5c019b6df8");
     expect(client.query.mock.calls.map(([sql]) => sql)).toEqual([
       "BEGIN",
+      expect.stringContaining("pg_advisory_xact_lock"),
+      expect.stringContaining("SELECT id FROM public_enquiries"),
       expect.stringContaining("INSERT INTO public_enquiries"),
       "COMMIT",
     ]);
     expect(client.release).toHaveBeenCalledOnce();
   });
 
-  it("rolls back and does not return an ID when persistence fails", async () => {
-    query.mockResolvedValue([]);
+  it("rejects a duplicate while holding the transaction-scoped lock", async () => {
     client.query
       .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [{ id: "existing-enquiry" }] })
+      .mockResolvedValueOnce({});
+    const { createPublicEnquiry } = await import("./service.js");
+
+    await expect(createPublicEnquiry({
+      type: "CONTACT",
+      fullName: "Database Verification",
+      email: "verification@example.invalid",
+      message: "Explicit persistence verification",
+      spamHash: "verification-marker",
+      sourceOrigin: "unknown",
+    })).rejects.toMatchObject({ status: 409 });
+
+    expect(client.query).not.toHaveBeenCalledWith(expect.stringContaining("INSERT INTO public_enquiries"), expect.anything());
+    expect(client.query.mock.calls.at(-1)?.[0]).toBe("ROLLBACK");
+  });
+
+  it("rolls back and does not return an ID when persistence fails", async () => {
+    client.query
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({})
+      .mockResolvedValueOnce({ rows: [] })
       .mockRejectedValueOnce(new Error("insert failed"));
     const { createPublicEnquiry } = await import("./service.js");
 
