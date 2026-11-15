@@ -18,14 +18,14 @@ beforeAll(async () => {
   process.env.DATABASE_URL = "postgres://test:test@localhost:5432/test";
   process.env.CORS_ORIGIN = "https://freclean.com";
   process.env.JWT_ACCESS_SECRET = "integration-test-access-secret-that-is-long";
-  delete process.env.CARD_PAYMENTS_ENABLED;
+  delete process.env.USDT_PAYMENTS_ENABLED;
   ({ app } = await import("./server.js"));
 });
 
 beforeEach(() => {
   poolQuery.mockReset();
   createPublicEnquiry.mockReset();
-  delete process.env.CARD_PAYMENTS_ENABLED;
+  delete process.env.USDT_PAYMENTS_ENABLED;
 });
 
 describe("critical production API boundaries", () => {
@@ -44,11 +44,13 @@ describe("critical production API boundaries", () => {
   it("rejects unauthenticated booking and cash workflows", async () => {
     const booking = await request(app).post("/api/bookings/").send({});
     const versionedBooking = await request(app).post("/api/v1/bookings/").send({});
-    const cash = await request(app).post("/api/payments/cash").send({});
+    const payment = await request(app).post("/api/payments").send({});
+    const transaction = await request(app).post("/api/payments/00000000-0000-4000-8000-000000000000/transaction").send({});
 
     expect(booking.status).toBe(401);
     expect(versionedBooking.status).toBe(401);
-    expect(cash.status).toBe(401);
+    expect(payment.status).toBe(401);
+    expect(transaction.status).toBe(401);
   });
 
   it("rejects invalid JWTs and accepts correctly signed customer identity", async () => {
@@ -69,14 +71,39 @@ describe("critical production API boundaries", () => {
     expect(missing.status).toBe(400);
   });
 
-  it("fails closed for card webhook processing when disabled", async () => {
-    const response = await request(app)
-      .post("/api/payments/card/webhook")
-      .set("X-Webhook-Signature", "00")
-      .send({ event: {} });
+  it("accepts only the two supported payment method identifiers", async () => {
+    const token = jwt.sign({ roles: ["CUSTOMER"] }, process.env.JWT_ACCESS_SECRET!, {
+      subject: "00000000-0000-4000-8000-000000000001",
+    });
+    const card = await request(app)
+      .post("/api/payments")
+      .set("Authorization", `Bearer ${token}`)
+      .set("Idempotency-Key", "reject-card-001")
+      .send({
+        orderId: "00000000-0000-4000-8000-000000000002",
+        paymentMethod: "CARD",
+      });
+    const obsoleteAsset = ["c", "USD"].join("");
+    const obsolete = await request(app)
+      .post("/api/payments")
+      .set("Authorization", `Bearer ${token}`)
+      .set("Idempotency-Key", "reject-asset-001")
+      .send({
+        orderId: "00000000-0000-4000-8000-000000000002",
+        paymentMethod: obsoleteAsset,
+      });
+    const celoht = await request(app)
+      .post("/api/payments")
+      .set("Authorization", `Bearer ${token}`)
+      .send({
+        bookingId: "00000000-0000-4000-8000-000000000003",
+        paymentMethod: "CELOHT_DAPP",
+      });
 
-    expect(response.status).toBe(503);
-    expect(response.body).toEqual({ error: "Card payments are not enabled" });
+    expect(card.status).toBe(400);
+    expect(obsolete.status).toBe(400);
+    expect(celoht.status).toBe(400);
+    expect(celoht.body.error).toBe("Idempotency-Key header is required");
   });
 
   it("validates public enquiries, permits the approved CORS origin, and blocks unknown origin", async () => {

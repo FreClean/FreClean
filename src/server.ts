@@ -14,6 +14,7 @@ import { validateEnvironment } from "./config.js";
 import { ZodError } from "zod";
 import { disputesRouter } from "./disputes/router.js";
 import { publicRequestsRouter } from "./public/requests.js";
+import { deliverPendingPaymentNotifications } from "./payments/notifications.js";
 
 validateEnvironment();
 export const app = express();
@@ -36,9 +37,6 @@ app.use(express.json({
   verify: (req, _res, buffer) => {
     if (req.url === "/api/public/requests" && buffer.byteLength > 16 * 1024) {
       throw Object.assign(new Error("Request body too large"), { status: 413 });
-    }
-    if (req.url === "/api/payments/card/webhook") {
-      (req as typeof req & { rawBody?: Buffer }).rawBody = Buffer.from(buffer);
     }
   },
 }));
@@ -92,7 +90,7 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
   req.log?.error({
     errorType: typeof err?.name === "string" ? err.name : "Error",
     errorCode: typeof err?.code === "string" ? err.code : undefined,
-    statusCode: err?.status ?? 500,
+    statusCode: err instanceof ZodError ? 400 : err?.status ?? 500,
   }, "Request failed");
   if (err instanceof ZodError) {
     return res.status(400).json({ error: "Invalid request", details: err.flatten().fieldErrors });
@@ -107,8 +105,26 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
 if (process.env.NODE_ENV !== "test") {
   const port = Number(process.env.PORT ?? 4000);
   const server = app.listen(port, () => console.log(`FreClean core listening on :${port}`));
+  let notificationDeliveryActive = false;
+  const deliverNotifications = async () => {
+    if (notificationDeliveryActive) return;
+    notificationDeliveryActive = true;
+    try {
+      const result = await deliverPendingPaymentNotifications();
+      if (result.failed > 0) requestLogger.warn({ failed: result.failed }, "Payment notifications need retry");
+    } catch (error) {
+      requestLogger.error({
+        errorType: error instanceof Error ? error.name : "Error",
+      }, "Payment notification delivery failed");
+    } finally {
+      notificationDeliveryActive = false;
+    }
+  };
+  void deliverNotifications();
+  const notificationTimer = setInterval(() => void deliverNotifications(), 30_000);
   const shutdown = (signal: string) => {
     console.log(`${signal} received; shutting down`);
+    clearInterval(notificationTimer);
     server.close(() => pool.end().then(() => process.exit(0)));
   };
   process.once("SIGTERM", () => shutdown("SIGTERM"));

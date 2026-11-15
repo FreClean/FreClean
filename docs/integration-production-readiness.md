@@ -4,7 +4,7 @@ Audit date: 2026-11-04
 
 ## Executive Status
 
-The repository is a functional Core API foundation with tested authentication, public enquiries, disputes, booking protection, cash recording, and payment verification boundaries. It is not fully production-ready because the external database currently fails the live readiness check, production migrations have not been verified, the app/admin functionality is incomplete outside this repository, and payment providers are not configured or sandbox-tested.
+The repository is a functional Core API foundation with tested authentication, public enquiries, disputes, booking protection, and an in-progress USDT payment API. It is not fully production-ready because the external database currently fails the live readiness check, production migrations have not been verified, the website/admin UI is outside this repository, and payment providers are not configured or independently sandbox-tested.
 
 Live HTTPS smoke checks on 2026-11-04:
 
@@ -23,10 +23,9 @@ Live HTTPS smoke checks on 2026-11-04:
 | Customer/staff/admin app | `FreClean/freclean-app` | `VITE_API_URL`; JWT access token handling | Build, login, protected route, admin API smoke test | Public repository exists; only partial UI/API integration verified externally |
 | Public website | `FreClean/freclean-website` | `FRECLEAN_PUBLIC_REQUEST_URL`, approved CORS origin | Browser submission with invalid and valid synthetic data | Repository exists; current script sends the required Core fields |
 | GitHub Actions | `FreClean/.github` or this repository workflow | Repository secrets only where needed | Workflow run status | Organization repository exists; current Core workflow passes |
-| Card payments | Approved processor | `CARD_PAYMENTS_ENABLED=true`, `CARD_PROCESSOR_API_KEY`, `CARD_PROCESSOR_WEBHOOK_SECRET`, signed webhook route | Processor sandbox, raw-body signature verification, duplicate event, amount mismatch | Foundation only; disabled |
-| Crypto payments | CELO/CeloHT/Celo payment flow | `CRYPTO_PAYMENTS_ENABLED=true`, `CELO_RPC_URL`, `USDM_CONTRACT_ADDRESS`, `CELO_RECEIVING_ADDRESS`, `MIN_CONFIRMATIONS` | Sandbox/testnet transaction and chain verification | Foundation only; disabled |
-| Cash payments | Core API plus staff identity | Staff role and staff record | Authorized staff test payment reconciliation | Implemented with authorization; production data unverified |
-| SMTP/SMS notifications | Notification provider | `SMTP_URL` and/or SMS provider credentials | Send test only to controlled test address/number | Not configured or verified |
+| USDT payments | FreClean Core | `USDT_PAYMENTS_ENABLED`, BSC/TRON/Solana/Celo RPC URLs | Mainnet contract, recipient, amount, success, confirmation/finality and replay checks | API foundation implemented; disabled pending provider and token verification |
+| CeloHT DApp | Approved CeloHT DApp | `CELOHT_DAPP_URL` | DApp handoff plus authoritative settlement callback | Separate handoff represented; settlement callback is not in this repository |
+| Payment notifications | Resend | Existing `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `CONTACT_EMAIL` | Customer/admin delivery and outbox retry in a controlled environment | Outbox implemented; production delivery unverified |
 
 ## Accessible External Repositories
 
@@ -82,39 +81,23 @@ Owner action: verify service auto-deploy or manual deploy, environment groups, m
 
 Safe verification: liveness 200, readiness 200, controlled invalid-origin 403, controlled valid-origin POST 201 only with a non-production database row that is cleaned up according to policy.
 
-### Card Payment Provider
+### USDT Payment Integration
 
-Why required: authoritative Visa/Mastercard settlement and webhook state.
+The Core exposes authenticated payment creation and transaction-hash submission
+for USDT BEP20, TRC20, Solana, and Celo. It retrieves order/booking prices from
+the database and checks chain, token, recipient, amount, transaction success,
+confirmations/finality, and transaction replay before setting `PAID`.
 
-Exact variables:
+Required before enablement: `USDT_PAYMENTS_ENABLED=true`, tested mainnet
+`BSC_RPC_URL`, `TRON_RPC_URL`, `SOLANA_RPC_URL`, and `CELO_RPC_URL`. Set
+`TRONGRID_API_KEY` only when required by the chosen TRON provider. The BNB
+contract address still requires independent confirmation from an authoritative
+issuer/explorer record. See [`payments.md`](payments.md).
 
-- `CARD_PAYMENTS_ENABLED=true`
-- `CARD_PROCESSOR_API_KEY`
-- `CARD_PROCESSOR_WEBHOOK_SECRET`
-
-Where: Render secret environment only. Enable in the app only after an approved processor URL/SDK contract exists.
-
-Missing: verified merchant account, approved processor, sandbox API credentials, actual webhook header format, signed sandbox event, settlement/reconciliation policy.
-
-Safe verification: processor sandbox with synthetic transaction, exact raw-body signature, duplicate event, amount mismatch, failure event, and signature rejection.
-
-### Crypto Payment Integration
-
-Why required: server-side verification for CELO/USDm payments.
-
-Exact variables:
-
-- `CRYPTO_PAYMENTS_ENABLED=true`
-- `CELO_RPC_URL`
-- `USDM_CONTRACT_ADDRESS`
-- `CELO_RECEIVING_ADDRESS`
-- `MIN_CONFIRMATIONS`
-
-Where: Render secret environment; public addresses are not secrets but wallet credentials/private keys are never stored here.
-
-Missing: chain configuration approval, legal/technical eligibility, RPC provider reliability, verified receiving address, sandbox/testnet transaction data.
-
-Safe verification: controlled testnet transaction, expected recipient/amount/asset/chain, duplicate transaction hash rejection, confirmation threshold, and mismatch rejection.
+USDT checkout remains disabled until RPC providers, contract identifiers,
+wallet control, migrations, and end-to-end payment tests have been confirmed.
+CeloHT remains a separate handoff; no settlement callback is available here,
+so a redirect cannot mark a payment paid.
 
 ### Notifications
 
@@ -132,7 +115,7 @@ Safe verification: delivery to owner-controlled test recipient and no PII in log
 
 - Live external readiness smoke check performed without credentials.
 - Public enquiry payload compatibility audited against the website repository.
-- Disabled card/crypto integrations no longer require their credentials at production startup.
+- USDT payments are disabled by default and require all chain RPCs before production enablement.
 - Refresh tokens now require the `refresh` token type.
 - Focused configuration and refresh-token tests added.
 - Public API contract updated for current website field names and migration 0004.
@@ -142,7 +125,7 @@ Safe verification: delivery to owner-controlled test recipient and no PII in log
 ### P0: Database and Deployment
 
 1. Restore Supabase connectivity and verify Session Pooler SSL.
-2. Verify all migrations, including migration 0004, against a safe database.
+2. Verify all migrations, including migration 0005, against clean and production-like existing databases.
 3. Make Render readiness return 200 only after PostgreSQL success.
 4. Apply migrations before traffic.
 5. Run controlled synthetic public enquiry insert/read-back.
@@ -163,10 +146,11 @@ Safe verification: delivery to owner-controlled test recipient and no PII in log
 
 ### P1: Payments
 
-1. Keep card/crypto integrations disabled until approved providers and sandbox credentials exist.
-2. Add provider-specific webhook canonicalization rather than generic HMAC assumptions.
-3. Add card transaction state and reconciliation atomically.
-4. Add crypto verification endpoint and sandbox-only test coverage.
+1. Independently validate the BNB token identifier and all four mainnet RPC providers.
+2. Verify migration 0005 against clean and production-like existing database copies.
+3. Implement/test CeloHT DApp settlement callback using its authoritative contract/provider.
+4. Integrate and test website payment UI and product-order APIs in their owning repository.
+5. Execute controlled success, mismatch, finality, replay, and email delivery tests on all networks.
 
 ### P2: Internationalization, SEO, and Operations
 
@@ -180,10 +164,11 @@ Safe verification: delivery to owner-controlled test recipient and no PII in log
 The project cannot be declared production-ready until:
 
 - `/health/ready` returns 200 for a real verified Supabase/Postgres connection.
-- Migration 0004 and all earlier migrations are verified in the target database.
+- Migrations 0001-0005 are verified in the target database.
 - Production public enquiries can be written and read by authorized staff.
 - App and website API bases point to the approved Core API.
 - Admin access is tested with non-production identities.
-- Card/crypto integrations remain disabled or pass merchant/provider sandbox verification.
+- USDT payments remain disabled until all network and payment acceptance checks pass.
+- CeloHT DApp settlement is independently verifiable and tested before it is treated as paid.
 - Notification providers are configured or explicitly reported unavailable.
 - Owner approves production deployment and migration execution.

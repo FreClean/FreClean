@@ -40,10 +40,8 @@ src/
   disputes/        complaints, case workflow, communication, and audit integration
   roles/            authorization and RBAC
   payments/
-    crypto/        CELO and USDm verification (server-side only)
-    card/          processor webhook verification
-    cash/          staff-recorded cash payments + reconciliation
-    verification/  shared fail-closed verification logic
+    crypto/        USDT transaction verification for four mainnets
+    notifications  paid-payment email outbox delivery
 database/migrations/   versioned SQL migrations
 scripts/               operational scripts
 docs/                  architecture and payment/security documentation
@@ -51,15 +49,18 @@ docs/                  architecture and payment/security documentation
 
 ## Payment policy
 
-FreClean supports exactly three payment categories see `docs/payments.md`:
+The only supported customer payment options are USDT BEP20, USDT TRC20,
+USDT Solana, USDT Celo, and the separate CeloHT DApp handoff. New payment
+requests use `USDT` or `CELOHT_DAPP`; legacy payment rows remain available for
+historical recordkeeping. USDT payments are server-verified against the
+network-specific token identifier, recipient, amount, success, and finality
+before the payment or order/booking can become paid. See
+[`docs/payments.md`](docs/payments.md) for the API, configuration, migration,
+verification details, production gates, and acceptance checklist.
 
-1. **Crypto** - CELO and USDm, verified against server-side chain data
-2. **Card** - via a certified payment processor (Visa/Mastercard), tokenized, webhook-verified
-3. **Cash** - recorded by authorized staff only, reconciled centrally
-
-All three write into one unified `payments` domain model (`src/payments/model.ts`).
-No payment is ever marked `PAID` from client-supplied data — verification is
-always server-side and fail-closed.
+USDT checkout is disabled by default. The API repository does not include
+website checkout UI, product order creation, or CeloHT settlement callbacks;
+those integrations must be completed and tested before production enablement.
 
 ## Disputes and complaints
 

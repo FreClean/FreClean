@@ -1,22 +1,34 @@
-export type PaymentMethod = "CRYPTO" | "CARD" | "CASH";
+export type PaymentMethod = "USDT" | "CELOHT_DAPP";
+
+export type PaymentNetwork = "BEP20" | "TRC20" | "SOLANA" | "CELO";
 
 export type PaymentStatus =
-  | "CREATED" | "PENDING" | "PROCESSING" | "VERIFIED" | "COMPLETED"
-  | "FAILED" | "CANCELLED" | "EXPIRED" | "REJECTED";
+  | "PENDING"
+  | "VERIFYING"
+  | "PAID"
+  | "FAILED"
+  | "EXPIRED"
+  | "CANCELLED"
+  | "REFUNDED";
 
 export interface Payment {
   id: string;
-  method: PaymentMethod;
-  status: PaymentStatus;
-  amountCents: number;
-  currency: string; // USD, or asset symbol for crypto (USDm, CELO)
+  customerId: string;
   orderId?: string;
   bookingId?: string;
-  verificationStatus: "UNVERIFIED" | "VERIFIED" | "FAILED";
-  reconciliationStatus?: "RECORDED" | "RECONCILED" | "DISCREPANCY" | "CANCELLED";
+  method: PaymentMethod;
+  asset: "USDT" | null;
+  network: PaymentNetwork | null;
+  amount: string;
+  currency: string;
+  receivingAddress: string | null;
+  transactionHash: string | null;
+  status: PaymentStatus;
+  createdAt: string;
+  updatedAt: string;
+  verifiedAt: string | null;
 }
 
-// One payment must always be tied to exactly one order or booking.
 export function assertSinglePaymentTarget(orderId?: string, bookingId?: string) {
   if (Boolean(orderId) === Boolean(bookingId)) {
     throw new Error("A payment must reference exactly one of orderId or bookingId");

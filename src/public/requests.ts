@@ -25,7 +25,13 @@ export const publicRequestSchema = z.object({
   time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).optional(),
   location: cleanText.pipe(z.string().min(1).max(500)).optional(),
   notes: cleanText.pipe(z.string().min(10).max(5000)).optional(),
-  payment_method: cleanText.pipe(z.string().min(1).max(100)).optional(),
+  payment_method: cleanText.pipe(z.enum([
+    "USDT BEP20",
+    "USDT TRC20",
+    "USDT Solana",
+    "USDT Celo",
+    "CeloHT DApp",
+  ])).optional(),
   message: cleanText.pipe(z.string().min(10).max(5000)).optional(),
   website: z.literal("").optional(),
 }).strict().superRefine((body, context) => {

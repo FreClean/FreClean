@@ -15,8 +15,10 @@ This audit covers the FreClean core repository and read-only production smoke ch
 - `POST /api/auth/refresh` - refresh access-token generation.
 - `POST /api/bookings/` - authenticated booking creation.
 - `POST /api/public/requests` - anonymous public enquiry submission.
-- `POST /api/payments/cash` - authenticated staff cash-payment recording.
-- `POST /api/payments/card/webhook` - signature webhook for the generic card processor.
+- `POST /api/payments` - authenticated, idempotent order/booking payment creation.
+- `POST /api/payments/:paymentId/transaction` - authenticated USDT transaction-hash submission and server-side verification.
+- `GET /api/payments/:paymentId` - customer-owned payment retrieval.
+- `GET /api/payments/admin` - ADMIN-only payment list.
 - `POST /api/disputes` - authenticated dispute creation.
 - `GET /api/disputes` - authorized dispute listing.
 - `GET /api/disputes/:id` - authorized dispute retrieval.
@@ -48,16 +50,18 @@ This audit covers the FreClean core repository and read-only production smoke ch
 
 - JWT middleware rejects missing credentials and invalid signed tokens.
 - The integration test confirms signed customer tokens attach only middleware-derived `sub` identity and a validated role list.
-- Protected booking and cash routes reject unauthenticated requests.
+- Protected booking and payment routes reject unauthenticated requests.
 - This repository implements custom JWT authentication using `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`; it has no Supabase dependency.
 
 ### Payments
 
-- Card webhook processing now requires `CARD_PAYMENTS_ENABLED=true` and returns HTTP 503 when disabled.
-- Cash recording requires authentication and the `STAFF` role.
-- Card webhook signatures are verified with a timing-safe HMAC comparison when enabled.
-- No Stripe SDK, Stripe secret, Stripe webhook route, or Stripe payment implementation exists.
-- Client payment success claims are not authoritative; payment state remains server-verified by the existing domain paths.
+- New payment methods are USDT on BEP20, TRC20, Solana, and Celo, plus a separate CeloHT DApp handoff.
+- USDT payment amounts and receiving addresses are derived from persisted order/booking values and the server network configuration.
+- Mainnet chain, token, recipient, amount, success, confirmation/finality, and transaction-hash replay checks run server-side.
+- Payment/order state and customer/admin email outbox records are committed atomically after successful verification.
+- USDT payments are disabled by default; mainnet RPC, official token identifier, wallet ownership, and production database state remain unverified.
+- CeloHT is a separate handoff only; this repository does not contain its settlement callback or verifier.
+- Website checkout UI, product order creation, and admin dashboard UI are not tracked in this Core repository.
 
 ### Error handling
 
@@ -106,7 +110,7 @@ The following could not be confirmed without exposing or obtaining production cr
 - Migration state in the Render production database.
 - Successful production login, registration, refresh-token, or dispute workflow.
 - Production Supabase authentication because there is no Supabase integration in this backend.
-- Successful enabled-card webhook processing against a real processor.
+- Successful mainnet USDT verification with production RPC providers.
 - Successful authenticated production customer workflow against real PostgreSQL data.
 
 During the audit, one live readiness check returned 503 and another timed out at the client limit. The implementation now returns bounded 503 readiness responses; database persistence must still not be represented as verified successful.
@@ -133,7 +137,7 @@ The frontend must:
 6. Store and rotate refresh tokens according to secure frontend session rules; never expose JWT signing secrets.
 7. Handle HTTP 400, 401, 403, 409, 413, 429, 500, and readiness HTTP 503 responses.
 8. Submit booking identities only as server-issued UUID references; never infer customer identity or authorization from the browser.
-9. Treat payment success as server-authoritative only. Do not add Stripe checkout until Stripe configuration, webhook verification, and provider enablement are implemented and approved.
+9. Treat payment success as server-authoritative only. Do not report payment as confirmed until the Core API verifier marks it `PAID`.
 10. Do not attempt direct Supabase database access; this backend owns PostgreSQL and does not expose Supabase authentication sessions.
 
 ## npm Vulnerability Audit
@@ -157,7 +161,7 @@ Configure Render with:
 
 - Health Check Path: `/health`.
 - `CORS_ORIGIN=https://freclean.com`.
-- `CARD_PAYMENTS_ENABLED=false` until a certified provider is explicitly approved and configured.
+- `USDT_PAYMENTS_ENABLED=false` until all four mainnet RPCs and token identifiers are independently verified and tested.
 - Existing PostgreSQL and JWT secrets remain in the Render secret environment only.
 - Database migrations are applied before traffic is enabled.
 - The Session Pooler URL for Supabase project `rfpqjfbeeisnzexzonkx` must be verified by hostname, project reference, port, username, database, and SSL mode before deployment verification.

@@ -10,7 +10,6 @@ export interface AuthenticatedUser {
 declare module "express-serve-static-core" {
   interface Request {
     user?: AuthenticatedUser;
-    rawBody?: Buffer;
   }
 }
 

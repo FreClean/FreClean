@@ -62,7 +62,7 @@ describe("POST /api/public/requests", () => {
       email: "Maria@example.com",
       location: "Santo Domingo",
       notes: "Please include kitchen and balcony cleaning.",
-      payment_method: "Cash",
+      payment_method: "USDT TRC20",
     });
 
     expect(response.status).toBe(201);
@@ -74,7 +74,7 @@ describe("POST /api/public/requests", () => {
       time: "14:30",
       location: "Santo Domingo",
       notes: "Please include kitchen and balcony cleaning.",
-      paymentMethod: "Cash",
+      paymentMethod: "USDT TRC20",
       type: "SERVICE",
     }));
     expect(sendPublicEnquiryEmail).toHaveBeenCalledWith(expect.objectContaining({
@@ -100,6 +100,18 @@ describe("POST /api/public/requests", () => {
       phone: "abc123",
     });
     expect(invalid.status).toBe(400);
+    expect(createPublicEnquiry).not.toHaveBeenCalled();
+  });
+
+  it("rejects payment choices outside the supported methods", async () => {
+    const obsoleteAsset = ["c", "USD"].join("");
+    for (const paymentMethod of ["Card", obsoleteAsset, "Cash"]) {
+      const response = await request(app).post("/api/public/requests").send({
+        ...validBody,
+        payment_method: paymentMethod,
+      });
+      expect(response.status).toBe(400);
+    }
     expect(createPublicEnquiry).not.toHaveBeenCalled();
   });
 
