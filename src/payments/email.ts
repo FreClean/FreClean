@@ -1,4 +1,5 @@
 import type { PaymentNetwork } from "./model.js";
+import { sendResendEmail } from "../notifications/resend.js";
 
 export interface PaymentNotification {
   paymentId: string;
@@ -13,12 +14,6 @@ export interface PaymentNotification {
   recipientType: "CUSTOMER" | "ADMIN";
 }
 
-function requiredEnvironment(name: "RESEND_API_KEY" | "RESEND_FROM_EMAIL"): string {
-  const value = process.env[name]?.trim();
-  if (!value) throw new Error(`${name} is not configured`);
-  return value;
-}
-
 function escapeHtml(value: string): string {
   return value.replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",
@@ -30,8 +25,6 @@ function escapeHtml(value: string): string {
 }
 
 export async function sendPaymentNotification(notification: PaymentNotification, to: string): Promise<void> {
-  const apiKey = requiredEnvironment("RESEND_API_KEY");
-  const from = requiredEnvironment("RESEND_FROM_EMAIL");
   const target = notification.orderId
     ? `Order ${notification.orderId}`
     : `Booking ${notification.bookingId}`;
@@ -49,27 +42,9 @@ export async function sendPaymentNotification(notification: PaymentNotification,
     .map(([label, value]) => `<tr><th align="left">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
     .join("");
 
-  let response: Response;
-  try {
-    response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-        "Idempotency-Key": `payment-${notification.paymentId}-${notification.recipientType.toLowerCase()}`,
-      },
-      body: JSON.stringify({
-        from,
-        to: [to],
-        subject: heading,
-        text: `${heading}\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}`,
-        html: `<div style="font-family:Arial,sans-serif;color:#1f2937"><h1>${heading}</h1><table>${rows}</table></div>`,
-      }),
-      signal: AbortSignal.timeout(10_000),
-    });
-  } catch (error) {
-    const reason = error instanceof Error ? error.name : "request_error";
-    throw new Error(`Payment notification provider request failed: ${reason}`);
-  }
-  if (!response.ok) throw new Error(`Payment notification provider returned HTTP ${response.status}`);
+  await sendResendEmail(to, {
+    subject: heading,
+    text: `${heading}\n${details.map(([label, value]) => `${label}: ${value}`).join("\n")}`,
+    html: `<div style="font-family:Arial,sans-serif;color:#1f2937"><h1>${heading}</h1><table>${rows}</table></div>`,
+  }, `payment-${notification.paymentId}-${notification.recipientType.toLowerCase()}`);
 }

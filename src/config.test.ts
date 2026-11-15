@@ -55,4 +55,18 @@ describe("production environment validation", () => {
     process.env.CONTACT_EMAIL = "another@example.com";
     expect(() => validateEnvironment()).toThrow(/CONTACT_EMAIL must be contact@freclean\.com/);
   });
+
+  it("fails clearly for missing or malformed Resend settings without exposing values", () => {
+    setProductionEnvironment();
+    delete process.env.RESEND_API_KEY;
+    expect(() => validateEnvironment()).toThrow(/RESEND_API_KEY/);
+
+    setProductionEnvironment();
+    process.env.RESEND_API_KEY = "private-invalid-api-key";
+    expect(() => validateEnvironment()).toThrow(/RESEND_API_KEY is invalid/);
+
+    setProductionEnvironment();
+    process.env.RESEND_FROM_EMAIL = "not-an-email";
+    expect(() => validateEnvironment()).toThrow(/RESEND_FROM_EMAIL is invalid/);
+  });
 });

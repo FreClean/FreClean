@@ -16,6 +16,7 @@ import { disputesRouter } from "./disputes/router.js";
 import { publicRequestsRouter } from "./public/requests.js";
 import { deliverPendingEnquiryNotifications } from "./public/notifications.js";
 import { deliverPendingPaymentNotifications } from "./payments/notifications.js";
+import { safeNotificationErrorDetails } from "./notifications/resend.js";
 
 validateEnvironment();
 export const app = express();
@@ -109,15 +110,21 @@ if (process.env.NODE_ENV !== "test") {
   let notificationDeliveryActive = false;
   const deliverQueue = async (
     queue: string,
-    deliver: () => Promise<{ sent: number; failed: number }>
+    deliver: () => Promise<{ sent: number; failed: number; failureCodes?: string[] }>
   ) => {
     try {
       const result = await deliver();
-      if (result.failed > 0) requestLogger.warn({ queue, failed: result.failed }, "Notifications need retry");
+      if (result.failed > 0) {
+        requestLogger.warn({
+          queue,
+          failed: result.failed,
+          ...(result.failureCodes ? { errorCodes: result.failureCodes } : {}),
+        }, "Notifications need retry");
+      }
     } catch (error) {
       requestLogger.error({
         queue,
-        errorType: error instanceof Error ? error.name : "Error",
+        ...safeNotificationErrorDetails(error),
       }, "Notification delivery failed");
     }
   };

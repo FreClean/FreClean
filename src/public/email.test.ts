@@ -82,4 +82,16 @@ describe("public enquiry email delivery", () => {
 
     await expect(sendPublicEnquiryEmail(enquiry)).rejects.toMatchObject({ status: 502 });
   });
+
+  it("rejects missing or malformed Resend configuration before making a request", async () => {
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
+    process.env.RESEND_FROM_EMAIL = "FreClean <enquiries@example.com>";
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(sendPublicEnquiryEmail(enquiry)).rejects.toThrow(/RESEND_API_KEY is not configured/);
+    process.env.RESEND_API_KEY = "invalid-key";
+    await expect(sendPublicEnquiryEmail(enquiry)).rejects.toThrow(/RESEND_API_KEY is invalid/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });

@@ -58,6 +58,14 @@ try {
     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'payments' ORDER BY column_name"
   )).rows.map((row) => row.column_name);
   const missingPaymentColumns = requiredPaymentColumns.filter((column) => !paymentColumns.includes(column));
+  const requiredPaymentNotificationColumns = [
+    "payment_id", "recipient_type", "recipient_email", "payload", "status", "attempts", "next_attempt_at",
+  ];
+  const paymentNotificationColumns = (await pool.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'payment_notification_outbox' ORDER BY column_name"
+  )).rows.map((row) => row.column_name);
+  const missingPaymentNotificationColumns = requiredPaymentNotificationColumns
+    .filter((column) => !paymentNotificationColumns.includes(column));
   const paymentIndexes = (await pool.query(
     "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('payments','payment_notification_outbox','public_enquiry_notification_outbox') ORDER BY indexname"
   )).rows.map((row) => row.indexname);
@@ -67,6 +75,7 @@ try {
     "idx_payments_order",
     "idx_payments_booking",
     "idx_payment_notifications_pending",
+    "idx_payment_notifications_due",
     "idx_public_enquiry_notifications_pending",
   ];
   const missingIndexes = requiredIndexes.filter((index) => !paymentIndexes.includes(index));
@@ -80,6 +89,7 @@ try {
     missingEnquiryNotificationColumns,
     paymentIndexes,
     missingPaymentColumns,
+    missingPaymentNotificationColumns,
     missingIndexes,
   }));
 
@@ -89,6 +99,7 @@ try {
     missingEnquiryColumns.length > 0 ||
     missingEnquiryNotificationColumns.length > 0 ||
     missingPaymentColumns.length > 0 ||
+    missingPaymentNotificationColumns.length > 0 ||
     missingIndexes.length > 0
   ) process.exitCode = 1;
 } catch (error) {

@@ -12,6 +12,7 @@ vi.mock("../db.js", () => ({
 vi.mock("./email.js", () => ({ sendPublicEnquiryEmail }));
 
 import { deliverPendingEnquiryNotifications } from "./notifications.js";
+import { NotificationDeliveryError } from "../notifications/resend.js";
 
 const payload = {
   type: "CONTACT" as const,
@@ -49,7 +50,7 @@ describe("public enquiry notification outbox", () => {
   it("delivers queued enquiries with a stable provider idempotency key", async () => {
     sendPublicEnquiryEmail.mockResolvedValue(undefined);
 
-    await expect(deliverPendingEnquiryNotifications()).resolves.toEqual({ sent: 1, failed: 0 });
+    await expect(deliverPendingEnquiryNotifications()).resolves.toEqual({ sent: 1, failed: 0, failureCodes: [] });
 
     expect(sendPublicEnquiryEmail).toHaveBeenCalledWith(
       payload,
@@ -64,13 +65,21 @@ describe("public enquiry notification outbox", () => {
   });
 
   it("retains provider failures for retry without returning success-shaped delivery", async () => {
-    sendPublicEnquiryEmail.mockRejectedValue(new Error("Email provider returned HTTP 503"));
+    sendPublicEnquiryEmail.mockRejectedValue(
+      new NotificationDeliveryError("RESEND_REJECTED", "Resend rejected the email (HTTP 503)", 503)
+    );
 
-    await expect(deliverPendingEnquiryNotifications()).resolves.toEqual({ sent: 0, failed: 1 });
+    await expect(deliverPendingEnquiryNotifications()).resolves.toEqual({
+      sent: 0,
+      failed: 1,
+      failureCodes: ["RESEND_REJECTED:HTTP_503"],
+    });
 
     expect(poolQuery).toHaveBeenCalledWith(
       expect.stringContaining("next_attempt_at = now() + make_interval"),
-      [outboxRow.id, "Email provider returned HTTP 503"]
+      [outboxRow.id, "RESEND_REJECTED:HTTP_503"]
     );
+    expect(clientQuery.mock.calls[1]?.[0]).toContain("attempts < 5");
+    expect(clientQuery.mock.calls[1]?.[0]).toContain("next_attempt_at <= now()");
   });
 });

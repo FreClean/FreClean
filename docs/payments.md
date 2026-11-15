@@ -101,9 +101,11 @@ derived from the payment's persisted network.
 
 After verification succeeds, a transactional outbox queues a customer receipt
 and an admin notice with the customer, order/booking, amount, USDT network,
-transaction hash, and `PAID` status. The notification worker retries
-transient delivery failures up to five times. Resend credentials stay in the
-server environment.
+transaction hash, and `PAID` status. The notification workers retry transient
+delivery failures up to five times with increasing delays, persist safe error
+codes, and use stable Resend idempotency keys. Resend credentials stay in the
+server environment; malformed or missing production configuration prevents
+startup.
 
 ## Environment and production deployment
 
@@ -141,6 +143,8 @@ npm start
 ```
 
 `0005_crypto-payments.sql` is additive and retains existing payment history.
+`0007_notification-retry-safety.sql` adds the payment outbox retry timestamp;
+apply it before deploying the updated notification worker.
 Test it against both an empty schema and a copy of the current production
 schema before deployment. The API repository has no website checkout, product
 order-creation API, admin dashboard UI, or CeloHT settlement integration.

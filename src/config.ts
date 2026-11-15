@@ -1,3 +1,5 @@
+import { validateNotificationEnvironment } from "./notifications/resend.js";
+
 const requiredInProduction = [
   "DATABASE_URL",
   "JWT_ACCESS_SECRET",
@@ -24,6 +26,7 @@ export function validateEnvironment() {
     if (process.env.CONTACT_EMAIL?.trim().toLowerCase() !== "contact@freclean.com") {
       throw new Error("CONTACT_EMAIL must be contact@freclean.com in production");
     }
+    validateNotificationEnvironment();
 
     if (process.env.USDT_PAYMENTS_ENABLED === "true") {
       const missingRpc = usdtRpcVariables.filter((name) => !String(process.env[name] ?? "").trim());

@@ -62,4 +62,23 @@ describe("payment notification delivery", () => {
       recipientType: "ADMIN",
     }, "contact@freclean.com")).rejects.toThrow(/HTTP 503/);
   });
+
+  it("rejects missing Resend credentials before contacting the provider", async () => {
+    process.env.RESEND_FROM_EMAIL = "FreClean <payments@example.com>";
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(sendPaymentNotification({
+      paymentId: "payment-3",
+      customerName: "Test Customer",
+      customerEmail: "customer@example.com",
+      orderId: "order-3",
+      bookingId: null,
+      amount: "20.00",
+      network: "TRC20",
+      transactionHash: "c".repeat(64),
+      status: "PAID",
+      recipientType: "CUSTOMER",
+    }, "customer@example.com")).rejects.toThrow(/RESEND_API_KEY is not configured/);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
 });
