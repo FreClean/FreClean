@@ -28,11 +28,33 @@ export async function requestBooking(input: {
   scheduledStart: string;
   scheduledEnd: string;
 }) {
+  const start = Date.parse(input.scheduledStart);
+  const end = Date.parse(input.scheduledEnd);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || start <= Date.now() || end <= start) {
+    throw Object.assign(new Error("Booking dates must be valid future times with an end after the start"), { status: 400 });
+  }
+
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
     // Lock at the transaction level to prevent race-condition double booking.
     await client.query("LOCK TABLE bookings IN SHARE ROW EXCLUSIVE MODE");
+
+    const address = await client.query(
+      "SELECT id FROM addresses WHERE id = $1 AND user_id = $2",
+      [input.addressId, input.customerId]
+    );
+    if (address.rows.length === 0) {
+      throw Object.assign(new Error("Address is not available"), { status: 404 });
+    }
+
+    const location = await client.query(
+      "SELECT id FROM business_locations WHERE id = $1 AND active = true",
+      [input.businessLocationId]
+    );
+    if (location.rows.length === 0) {
+      throw Object.assign(new Error("Business location is not available"), { status: 404 });
+    }
 
     const conflicts = await client.query(
       `SELECT id FROM bookings
@@ -48,7 +70,9 @@ export async function requestBooking(input: {
     const [service] = (
       await client.query(
         `SELECT sp.price_cents, sp.currency FROM service_pricing sp
-         WHERE sp.service_id = $1 ORDER BY sp.effective_from DESC LIMIT 1`,
+         JOIN services s ON s.id = sp.service_id
+         WHERE sp.service_id = $1 AND s.active = true AND sp.effective_from <= now()
+         ORDER BY sp.effective_from DESC LIMIT 1`,
         [input.serviceId]
       )
     ).rows;

@@ -44,7 +44,7 @@ authRouter.post("/login", authRateLimit, async (req, res, next) => {
 authRouter.post("/refresh", authRateLimit, async (req, res, next) => {
   try {
     const body = refreshSchema.parse(req.body);
-    const accessToken = refreshAccessToken(body.refreshToken);
+    const accessToken = await refreshAccessToken(body.refreshToken);
     res.json({ accessToken });
   } catch (err) {
     next(err);

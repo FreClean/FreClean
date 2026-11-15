@@ -14,6 +14,7 @@ import { validateEnvironment } from "./config.js";
 import { ZodError } from "zod";
 import { disputesRouter } from "./disputes/router.js";
 import { publicRequestsRouter } from "./public/requests.js";
+import { deliverPendingEnquiryNotifications } from "./public/notifications.js";
 import { deliverPendingPaymentNotifications } from "./payments/notifications.js";
 
 validateEnvironment();
@@ -106,16 +107,28 @@ if (process.env.NODE_ENV !== "test") {
   const port = Number(process.env.PORT ?? 4000);
   const server = app.listen(port, () => console.log(`FreClean core listening on :${port}`));
   let notificationDeliveryActive = false;
+  const deliverQueue = async (
+    queue: string,
+    deliver: () => Promise<{ sent: number; failed: number }>
+  ) => {
+    try {
+      const result = await deliver();
+      if (result.failed > 0) requestLogger.warn({ queue, failed: result.failed }, "Notifications need retry");
+    } catch (error) {
+      requestLogger.error({
+        queue,
+        errorType: error instanceof Error ? error.name : "Error",
+      }, "Notification delivery failed");
+    }
+  };
   const deliverNotifications = async () => {
     if (notificationDeliveryActive) return;
     notificationDeliveryActive = true;
     try {
-      const result = await deliverPendingPaymentNotifications();
-      if (result.failed > 0) requestLogger.warn({ failed: result.failed }, "Payment notifications need retry");
-    } catch (error) {
-      requestLogger.error({
-        errorType: error instanceof Error ? error.name : "Error",
-      }, "Payment notification delivery failed");
+      await Promise.all([
+        deliverQueue("public-enquiries", deliverPendingEnquiryNotifications),
+        deliverQueue("payments", deliverPendingPaymentNotifications),
+      ]);
     } finally {
       notificationDeliveryActive = false;
     }

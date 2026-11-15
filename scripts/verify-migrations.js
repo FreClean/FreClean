@@ -29,7 +29,7 @@ try {
   const applied = (await pool.query("SELECT name FROM schema_migrations ORDER BY name")).rows.map((row) => row.name);
   const pending = files.filter((file) => !applied.includes(file));
   const requiredTables = (await pool.query(
-    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('payment_notification_outbox','public_enquiries','schema_migrations') ORDER BY tablename"
+    "SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename IN ('payment_notification_outbox','public_enquiries','public_enquiry_notification_outbox','schema_migrations') ORDER BY tablename"
   )).rows.map((row) => row.tablename);
   const enquiryIndexes = (await pool.query(
     "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename = 'public_enquiries' ORDER BY indexname"
@@ -42,6 +42,14 @@ try {
     "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'public_enquiries' ORDER BY column_name"
   )).rows.map((row) => row.column_name);
   const missingEnquiryColumns = requiredEnquiryColumns.filter((column) => !publicEnquiryColumns.includes(column));
+  const requiredEnquiryNotificationColumns = [
+    "enquiry_id", "recipient_email", "payload", "status", "attempts", "next_attempt_at",
+  ];
+  const enquiryNotificationColumns = (await pool.query(
+    "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'public_enquiry_notification_outbox' ORDER BY column_name"
+  )).rows.map((row) => row.column_name);
+  const missingEnquiryNotificationColumns = requiredEnquiryNotificationColumns
+    .filter((column) => !enquiryNotificationColumns.includes(column));
   const requiredPaymentColumns = [
     "customer_id", "asset", "network", "amount", "receiving_address",
     "transaction_hash", "verified_at",
@@ -51,16 +59,17 @@ try {
   )).rows.map((row) => row.column_name);
   const missingPaymentColumns = requiredPaymentColumns.filter((column) => !paymentColumns.includes(column));
   const paymentIndexes = (await pool.query(
-    "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('payments','payment_notification_outbox') ORDER BY indexname"
+    "SELECT indexname FROM pg_indexes WHERE schemaname = 'public' AND tablename IN ('payments','payment_notification_outbox','public_enquiry_notification_outbox') ORDER BY indexname"
   )).rows.map((row) => row.indexname);
-  const requiredPaymentIndexes = [
+  const requiredIndexes = [
     "idx_payments_transaction_hash",
     "idx_payments_customer_created",
     "idx_payments_order",
     "idx_payments_booking",
     "idx_payment_notifications_pending",
+    "idx_public_enquiry_notifications_pending",
   ];
-  const missingPaymentIndexes = requiredPaymentIndexes.filter((index) => !paymentIndexes.includes(index));
+  const missingIndexes = requiredIndexes.filter((index) => !paymentIndexes.includes(index));
 
   console.log(JSON.stringify({
     applied,
@@ -68,17 +77,19 @@ try {
     requiredTables,
     publicEnquiryIndexes: enquiryIndexes,
     missingEnquiryColumns,
+    missingEnquiryNotificationColumns,
     paymentIndexes,
     missingPaymentColumns,
-    missingPaymentIndexes,
+    missingIndexes,
   }));
 
   if (
     pending.length > 0 ||
-    requiredTables.length !== 3 ||
+    requiredTables.length !== 4 ||
     missingEnquiryColumns.length > 0 ||
+    missingEnquiryNotificationColumns.length > 0 ||
     missingPaymentColumns.length > 0 ||
-    missingPaymentIndexes.length > 0
+    missingIndexes.length > 0
   ) process.exitCode = 1;
 } catch (error) {
   if (error?.code === "SUPABASE_CA_CERT_REQUIRED" || error?.code === "SUPABASE_CA_CERT_INVALID") {

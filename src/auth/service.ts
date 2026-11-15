@@ -9,6 +9,7 @@ interface UserRecord {
   email: string;
   password_hash: string;
   full_name: string;
+  status: "ACTIVE" | "SUSPENDED" | "DELETED";
 }
 
 function getJwtSecret(name: "JWT_ACCESS_SECRET" | "JWT_REFRESH_SECRET") {
@@ -44,7 +45,7 @@ export async function registerCustomer(email: string, password: string, fullName
 
   const passwordHash = await argon2.hash(password, { type: argon2.argon2id });
 
-  const [user] = await query<UserRecord>(
+  const [user] = await query<Pick<UserRecord, "id" | "email" | "full_name">>(
     `INSERT INTO users (email, password_hash, full_name)
      VALUES ($1, $2, $3) RETURNING id, email, full_name`,
     [normalizedEmail, passwordHash, fullName.trim()]
@@ -61,8 +62,11 @@ export async function registerCustomer(email: string, password: string, fullName
 
 export async function login(email: string, password: string) {
   const normalizedEmail = email.trim().toLowerCase();
-  const [user] = await query<UserRecord>("SELECT * FROM users WHERE email = $1", [normalizedEmail]);
-  if (!user) {
+  const [user] = await query<UserRecord>(
+    "SELECT id, email, password_hash, full_name, status FROM users WHERE email = $1",
+    [normalizedEmail]
+  );
+  if (!user || user.status !== "ACTIVE") {
     throw Object.assign(new Error("Invalid credentials"), { status: 401 });
   }
 
@@ -89,7 +93,7 @@ export async function login(email: string, password: string) {
   };
 }
 
-export function refreshAccessToken(refreshToken: string) {
+export async function refreshAccessToken(refreshToken: string) {
   const secret = getJwtSecret("JWT_REFRESH_SECRET");
   const payload = jwt.verify(refreshToken, secret);
 
@@ -105,5 +109,18 @@ export function refreshAccessToken(refreshToken: string) {
     throw Object.assign(new Error("Invalid refresh token"), { status: 401 });
   }
 
-  return issueAccessToken(payload.sub, roles);
+  const [user] = await query<{ status: "ACTIVE" | "SUSPENDED" | "DELETED" }>(
+    "SELECT status FROM users WHERE id = $1",
+    [payload.sub]
+  );
+  if (!user || user.status !== "ACTIVE") {
+    throw Object.assign(new Error("Invalid refresh token"), { status: 401 });
+  }
+  const currentRoles = await query<{ name: Role }>(
+    `SELECT r.name FROM roles r
+     JOIN user_roles ur ON ur.role_id = r.id
+     WHERE ur.user_id = $1`,
+    [payload.sub]
+  );
+  return issueAccessToken(payload.sub, currentRoles.map((role) => role.name));
 }

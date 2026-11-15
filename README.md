@@ -62,6 +62,12 @@ USDT checkout is disabled by default. The API repository does not include
 website checkout UI, product order creation, or CeloHT settlement callbacks;
 those integrations must be completed and tested before production enablement.
 
+Public contact and service enquiries are saved together with a durable Resend
+notification. The Core worker retries delivery to `contact@freclean.com` and
+uses the visitor's email as Reply-To. Configure `CONTACT_EMAIL`,
+`RESEND_API_KEY`, and a verified `RESEND_FROM_EMAIL` in the deployment secret
+manager; provider credentials are never sent to website clients.
+
 ## Disputes and complaints
 
 The canonical dispute API is under `/api/disputes`. It supports authenticated
@@ -76,7 +82,7 @@ evidence storage and refund-provider integration.
 - Server-side authorization only never trust frontend role claims.
 - Secrets live in environment variables, never in git. See `.env.example`.
 - Production configuration is validated before startup; missing required secrets or invalid payment config fail the process.
-- Refresh tokens are issued for secure session renewal and the core API refuses invalid refresh tokens.
+- Refresh tokens are validated against the current active account and roles. Token rotation and revocation are not yet implemented.
 - See `docs/security.md` for the full checklist this repo is audited against.
 
 ## Production readiness notes

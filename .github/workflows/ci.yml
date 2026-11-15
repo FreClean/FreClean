@@ -37,4 +37,7 @@ jobs:
       - run: npm run db:migrate
         env:
           DATABASE_URL: postgres://freclean:freclean@localhost:5432/freclean_test
+      - run: npm run db:verify
+        env:
+          DATABASE_URL: postgres://freclean:freclean@localhost:5432/freclean_test
       - run: npm audit --audit-level=high

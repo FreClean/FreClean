@@ -9,9 +9,7 @@ vi.mock("../db.js", () => ({
 const createPublicEnquiry = vi.fn();
 const listPublicEnquiries = vi.fn();
 const updatePublicEnquiryStatus = vi.fn();
-const sendPublicEnquiryEmail = vi.fn();
 vi.mock("./service.js", () => ({ createPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus }));
-vi.mock("./email.js", () => ({ sendPublicEnquiryEmail }));
 
 let app: import("express").Express;
 
@@ -26,9 +24,7 @@ beforeEach(() => {
   createPublicEnquiry.mockReset();
   listPublicEnquiries.mockReset();
   updatePublicEnquiryStatus.mockReset();
-  sendPublicEnquiryEmail.mockReset();
   createPublicEnquiry.mockResolvedValue("9f1d3f6f-7ab8-44aa-b23f-0a8d0e0c9ad1");
-  sendPublicEnquiryEmail.mockResolvedValue(undefined);
 });
 
 const validBody = {
@@ -41,12 +37,13 @@ const validBody = {
 };
 
 describe("POST /api/public/requests", () => {
-  it("accepts an anonymous enquiry and confirms only after persistence", async () => {
+  it("accepts an enquiry after persistence and returns the customer confirmation", async () => {
     const response = await request(app).post("/api/public/requests").send(validBody);
     expect(response.status).toBe(201);
     expect(response.body).toEqual({
       received: true,
       requestId: "9f1d3f6f-7ab8-44aa-b23f-0a8d0e0c9ad1",
+      message: "Your message has been received. The FreClean team will respond as soon as possible.",
     });
   });
 
@@ -76,10 +73,6 @@ describe("POST /api/public/requests", () => {
       notes: "Please include kitchen and balcony cleaning.",
       paymentMethod: "USDT TRC20",
       type: "SERVICE",
-    }));
-    expect(sendPublicEnquiryEmail).toHaveBeenCalledWith(expect.objectContaining({
-      type: "SERVICE",
-      notes: "Please include kitchen and balcony cleaning.",
     }));
   });
 
@@ -123,34 +116,39 @@ describe("POST /api/public/requests", () => {
     expect(response.status).toBe(413);
   });
 
-  it("does not confirm a received request when persistence fails", async () => {
+  it("returns a customer-safe error when persistence fails", async () => {
     createPublicEnquiry.mockRejectedValue(new Error("database unavailable"));
     const response = await request(app).post("/api/public/requests").send(validBody);
-    expect(response.status).toBe(500);
-    expect(response.body).toEqual({ error: "Internal server error" });
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      error: "Your message could not be sent right now. Please try again later.",
+    });
     expect(response.body.received).toBeUndefined();
-    expect(sendPublicEnquiryEmail).not.toHaveBeenCalled();
   });
 
-  it("does not confirm an enquiry when Resend rejects it", async () => {
-    sendPublicEnquiryEmail.mockRejectedValue(Object.assign(new Error("provider rejected"), { status: 502 }));
+  it("does not expose internal delivery errors when persistence fails", async () => {
+    createPublicEnquiry.mockRejectedValue(Object.assign(
+      new Error("Resend API key rejected: sensitive provider details"),
+      { status: 502 }
+    ));
 
     const response = await request(app).post("/api/public/requests").send(validBody);
 
-    expect(response.status).toBe(502);
-    expect(response.body).toEqual({ error: "provider rejected" });
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      error: "Your message could not be sent right now. Please try again later.",
+    });
+    expect(JSON.stringify(response.body)).not.toContain("sensitive provider details");
     expect(response.body.received).toBeUndefined();
     expect(createPublicEnquiry).toHaveBeenCalledOnce();
-    expect(createPublicEnquiry.mock.invocationCallOrder[0]).toBeLessThan(sendPublicEnquiryEmail.mock.invocationCallOrder[0]!);
   });
 
-  it("does not send email or persist when the enquiry is a duplicate", async () => {
+  it("does not accept a duplicate enquiry", async () => {
     createPublicEnquiry.mockRejectedValue(Object.assign(new Error("Duplicate request"), { status: 409 }));
 
     const response = await request(app).post("/api/public/requests").send(validBody);
 
     expect(response.status).toBe(409);
-    expect(sendPublicEnquiryEmail).not.toHaveBeenCalled();
   });
 
   it("applies production CORS behavior to allowed and disallowed origins", async () => {

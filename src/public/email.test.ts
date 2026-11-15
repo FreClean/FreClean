@@ -24,23 +24,29 @@ describe("public enquiry email delivery", () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response(null, { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
 
-    await sendPublicEnquiryEmail(enquiry);
+    await sendPublicEnquiryEmail(enquiry, "contact@freclean.com", "public-enquiry-id");
 
     const requestInit = fetchMock.mock.calls[0]?.[1] as RequestInit;
     const body = JSON.parse(String(requestInit.body));
     expect(body).toEqual(expect.objectContaining({
       to: ["contact@freclean.com"],
       reply_to: "jean@example.com",
-      subject: "New FreClean enquiry from Jean Pierre",
-      text: expect.stringMatching(/^Enquiry type: SERVICE\nName: Jean Pierre\nEmail: jean@example\.com\nService: Residential cleaning\nSubmitted at: .+\n\nI would like a cleaning estimate for my home\.$/),
-      html: expect.stringContaining("New FreClean enquiry"),
+      subject: "New FreClean Service Enquiry",
+      text: expect.stringContaining("Name:\nJean Pierre"),
+      html: expect.stringContaining("New FreClean Service Enquiry"),
     }));
     expect(body.from).toBe("FreClean <enquiries@example.com>");
-    expect(body.html).toContain("Submitted at");
+    expect(body.text).toContain("Email:\njean@example.com");
+    expect(body.text).toContain("Message:\nI would like a cleaning estimate for my home.");
+    expect(body.text).toContain("Submitted:\n");
+    expect(body.html).toContain("Submitted");
     expect(body.html).not.toContain("<script>");
     expect(fetchMock).toHaveBeenCalledWith("https://api.resend.com/emails", expect.objectContaining({
       method: "POST",
-      headers: expect.objectContaining({ Authorization: "Bearer re_test_key" }),
+      headers: expect.objectContaining({
+        Authorization: "Bearer re_test_key",
+        "Idempotency-Key": "public-enquiry-id",
+      }),
     }));
   });
 
@@ -59,6 +65,7 @@ describe("public enquiry email delivery", () => {
     });
 
     const body = JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body));
+    expect(body.subject).toBe("New FreClean Contact Enquiry");
     expect(body.text).toContain("Enquiry type: CONTACT");
     expect(body.text).toContain("Additional notes: Please call after 3pm.");
     expect(body.html).toContain("Enquiry type");

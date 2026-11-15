@@ -1,17 +1,25 @@
 # FreClean Integration and Production Readiness Report
 
-Audit date: 2026-11-04
+Audit date: 2026-11-16
 
 ## Executive Status
 
-The repository is a functional Core API foundation with tested authentication, public enquiries, disputes, booking protection, and an in-progress USDT payment API. It is not fully production-ready because the external database currently fails the live readiness check, production migrations have not been verified, the website/admin UI is outside this repository, and payment providers are not configured or independently sandbox-tested.
+The repository is a functional Core API foundation with tested authentication, public enquiries, disputes, booking protection, and an in-progress USDT payment API. Local build, tests, lint, repository checks, and clean/legacy migration verification pass. It is not fully production-ready because production database and email delivery have not been reverified, the website/admin UI is outside this repository, a duplicate website contact service remains in the website repository, and payment providers are not configured or independently sandbox-tested.
 
-Live HTTPS smoke checks on 2026-11-04:
+Last live HTTPS smoke checks, performed on 2026-11-04 (not repeated during this audit):
 
 - `GET https://freclean.onrender.com/health` returned HTTP 200.
 - `GET https://freclean.onrender.com/health/ready` returned HTTP 503.
-- GitHub Actions migrations and audit checks pass for the current commit.
 - No production database credentials or secrets were accessed or exposed.
+
+Local validation on 2026-11-16:
+
+- `npm test`: 33 test files passed.
+- `npm run build`, `npm run lint`, and `npm run check:repository` passed.
+- Migrations 0001-0006 applied and verified on a clean PostgreSQL database.
+- Migration 0006 applied and verified on a populated database with an existing enquiry preserved.
+- `npm audit --audit-level=high` passed its threshold; six moderate dependency advisories remain.
+- GitHub Actions and production services were not run or verified for these uncommitted changes.
 
 ## Integration Map
 
@@ -21,8 +29,9 @@ Live HTTPS smoke checks on 2026-11-04:
 | Supabase PostgreSQL | Supabase project | Session Pooler `DATABASE_URL`, TLS/SSL, migration access | Render connect, `SELECT 1`, migration verify, real insert/read-back in non-production first | Live readiness currently 503; credentials unavailable |
 | Render | Render | Service repo, build/start commands, health path, environment variables | Render deploy logs and HTTPS endpoints | Service reachable; database unhealthy |
 | Customer/staff/admin app | `FreClean/freclean-app` | `VITE_API_URL`; JWT access token handling | Build, login, protected route, admin API smoke test | Public repository exists; only partial UI/API integration verified externally |
-| Public website | `FreClean/freclean-website` | `FRECLEAN_PUBLIC_REQUEST_URL`, approved CORS origin | Browser submission with invalid and valid synthetic data | Repository exists; current script sends the required Core fields |
-| GitHub Actions | `FreClean/.github` or this repository workflow | Repository secrets only where needed | Workflow run status | Organization repository exists; current Core workflow passes |
+| Public website | `FreClean/freclean-website` | `FRECLEAN_PUBLIC_REQUEST_URL`, approved CORS origin | Browser submission with invalid and valid synthetic data | Current script submits to Core, but a separate contact service remains configured in the website repository; deployment status is unverified |
+| Contact enquiries | FreClean Core + Resend | `CONTACT_EMAIL=contact@freclean.com`, `RESEND_API_KEY`, verified `RESEND_FROM_EMAIL` | Submit a contact enquiry, confirm durable outbox creation and delivery/retry | Transactional outbox and retry worker implemented; live provider delivery unverified |
+| GitHub Actions | `FreClean/.github` or this repository workflow | Repository secrets only where needed | Workflow run status | Organization repository exists; local checks pass, but the latest uncommitted changes have no remote workflow result |
 | USDT payments | FreClean Core | `USDT_PAYMENTS_ENABLED`, BSC/TRON/Solana/Celo RPC URLs | Mainnet contract, recipient, amount, success, confirmation/finality and replay checks | API foundation implemented; disabled pending provider and token verification |
 | CeloHT DApp | Approved CeloHT DApp | `CELOHT_DAPP_URL` | DApp handoff plus authoritative settlement callback | Separate handoff represented; settlement callback is not in this repository |
 | Payment notifications | Resend | Existing `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `CONTACT_EMAIL` | Customer/admin delivery and outbox retry in a controlled environment | Outbox implemented; production delivery unverified |
@@ -43,7 +52,7 @@ Current visible limitation: admin/staff/customer dashboards are mostly placehold
 
 Publicly accessible static website. It uses `FRECLEAN_PUBLIC_REQUEST_URL` and submits `service`, `property_type`, `space_size`, `date`, `time`, `name`, `phone`, `email`, `location`, `notes`, and `payment_method` to the Core API.
 
-The website does not own database writes, JWT secrets, payment credentials, or admin functions. Those remain in this Core repository or approved external services.
+The repository also contains a standalone Node contact service and a Render service definition with its own Resend integration. Its default recipient is `freclean7@gmail.com`, not the required `contact@freclean.com`; it also bypasses the Core enquiry database/outbox. The current website form targets Core, but the separate service's deployment status is unknown. Decommission or remove that duplicate path and verify Render configuration before production use. The website does not own database writes, JWT secrets, payment credentials, or admin functions. Those remain in this Core repository or approved external services.
 
 ### FreClean/.github
 
@@ -101,31 +110,38 @@ so a redirect cannot mark a payment paid.
 
 ### Notifications
 
-Why required: customer status and administrator operational notifications.
+Why required: reliable delivery of contact enquiries and payment status notifications.
 
-Environment variables: `SMTP_URL`, SMS-provider-specific credential name once selected.
+Environment variables: `CONTACT_EMAIL=contact@freclean.com`, `RESEND_API_KEY`,
+and `RESEND_FROM_EMAIL` using a verified FreClean sender identity.
 
-Where: Render secret environment.
+Where: Render secret environment. The visitor's email is used as Reply-To;
+Resend credentials remain server-side.
 
-Missing: provider account, sender identities, consent/template policy, bounce/opt-out handling.
+Missing: owner-controlled provider credentials, verified sender setup, and
+live delivery/retry verification. No second email provider is required.
 
-Safe verification: delivery to owner-controlled test recipient and no PII in logs.
+Safe verification: use an owner-controlled test recipient and inspect outbox
+retry state without exposing customer content or provider credentials in logs.
 
 ## Safe Improvements Completed in This Repository
 
 - Live external readiness smoke check performed without credentials.
 - Public enquiry payload compatibility audited against the website repository.
+- Website contact form target confirmed as Core; its separate Resend contact service and wrong default recipient documented as a production blocker.
 - USDT payments are disabled by default and require all chain RPCs before production enablement.
 - Refresh tokens now require the `refresh` token type.
 - Focused configuration and refresh-token tests added.
 - Public API contract updated for current website field names and migration 0004.
+- Public enquiries and Resend delivery are committed through an outbox with retryable failures.
+- Clean migrations 0001-0006 and migration 0006 over a populated legacy database verified locally.
 
 ## Prioritized Backlog
 
 ### P0: Database and Deployment
 
 1. Restore Supabase connectivity and verify Session Pooler SSL.
-2. Verify all migrations, including migration 0005, against clean and production-like existing databases.
+2. Verify all migrations, including migrations 0005 and 0006, against the target production database after backup and owner approval.
 3. Make Render readiness return 200 only after PostgreSQL success.
 4. Apply migrations before traffic.
 5. Run controlled synthetic public enquiry insert/read-back.
@@ -147,7 +163,7 @@ Safe verification: delivery to owner-controlled test recipient and no PII in log
 ### P1: Payments
 
 1. Independently validate the BNB token identifier and all four mainnet RPC providers.
-2. Verify migration 0005 against clean and production-like existing database copies.
+2. Verify migrations 0005 and 0006 against clean and production-like existing database copies.
 3. Implement/test CeloHT DApp settlement callback using its authoritative contract/provider.
 4. Integrate and test website payment UI and product-order APIs in their owning repository.
 5. Execute controlled success, mismatch, finality, replay, and email delivery tests on all networks.
@@ -164,9 +180,10 @@ Safe verification: delivery to owner-controlled test recipient and no PII in log
 The project cannot be declared production-ready until:
 
 - `/health/ready` returns 200 for a real verified Supabase/Postgres connection.
-- Migrations 0001-0005 are verified in the target database.
+- Migrations 0001-0006 are verified in the target database (local clean and legacy copies have passed).
 - Production public enquiries can be written and read by authorized staff.
 - App and website API bases point to the approved Core API.
+- The duplicate website contact service is decommissioned or proven unused, and the Core contact flow delivers to `contact@freclean.com`.
 - Admin access is tested with non-production identities.
 - USDT payments remain disabled until all network and payment acceptance checks pass.
 - CeloHT DApp settlement is independently verifiable and tested before it is treated as paid.

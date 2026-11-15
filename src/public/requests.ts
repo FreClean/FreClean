@@ -1,9 +1,8 @@
 import { createHmac } from "node:crypto";
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
-import { z } from "zod";
+import { ZodError, z } from "zod";
 import { createPublicEnquiry, listPublicEnquiries, updatePublicEnquiryStatus } from "./service.js";
-import { sendPublicEnquiryEmail } from "./email.js";
 import { requireAuthentication, requirePermission } from "../auth/middleware.js";
 
 const cleanText = z.string().transform((value) => value.trim().replace(/[\u0000-\u001F\u007F]/g, " "));
@@ -115,23 +114,24 @@ publicRequestsRouter.post("/requests", publicRequestLimiter, async (req, res, ne
       sourceOrigin,
     };
     const requestId = await createPublicEnquiry(enquiry);
-    await sendPublicEnquiryEmail({
-      type: body.type ?? "SERVICE",
-      fullName,
-      email: body.email,
-      phone: body.phone,
-      service: body.service,
-      propertyType: body.property_type,
-      spaceSize: body.space_size,
-      date: body.date,
-      time: body.time,
-      location: body.location,
-      paymentMethod: body.payment_method,
-      notes: body.notes,
-      message,
+    res.status(201).json({
+      received: true,
+      requestId,
+      message: "Your message has been received. The FreClean team will respond as soon as possible.",
     });
-    res.status(201).json({ received: true, requestId });
   } catch (error) {
-    next(error);
+    if (error instanceof ZodError) return next(error);
+    const failure = typeof error === "object" && error !== null
+      ? error as { status?: number; code?: string }
+      : {};
+    req.log?.error({
+      errorType: error instanceof Error ? error.name : "Error",
+      errorCode: failure.code,
+      statusCode: failure.status ?? 503,
+    }, "Public enquiry submission failed");
+    const status = failure.status === 409 ? 409 : 503;
+    res.status(status).json({
+      error: "Your message could not be sent right now. Please try again later.",
+    });
   }
 });
