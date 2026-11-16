@@ -127,8 +127,6 @@ Technology & Payments
 
 Danmante is designed to support modern digital payment infrastructure, including:
 
-- Visa
-- Mastercard
 - WalletConnect-compatible wallets
 - CeloHT payment infrastructure where applicable
 

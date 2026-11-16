@@ -41,7 +41,7 @@ describe("critical production API boundaries", () => {
     expect(ready.body).toEqual({ status: "unavailable", database: "unavailable" });
   });
 
-  it("rejects unauthenticated booking and cash workflows", async () => {
+  it("rejects unauthenticated booking and payment workflows", async () => {
     const booking = await request(app).post("/api/bookings/").send({});
     const versionedBooking = await request(app).post("/api/v1/bookings/").send({});
     const payment = await request(app).post("/api/payments").send({});
@@ -104,6 +104,18 @@ describe("critical production API boundaries", () => {
     expect(obsolete.status).toBe(400);
     expect(celoht.status).toBe(400);
     expect(celoht.body.error).toBe("Idempotency-Key header is required");
+  });
+
+  it("restricts manual payment confirmation to administrators", async () => {
+    const token = jwt.sign({ roles: ["CUSTOMER"] }, process.env.JWT_ACCESS_SECRET!, {
+      subject: "00000000-0000-4000-8000-000000000001",
+    });
+    const response = await request(app)
+      .post("/api/payments/00000000-0000-4000-8000-000000000002/confirm")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ confirmationNote: "Payment checked against the receipt." });
+
+    expect(response.status).toBe(403);
   });
 
   it("validates public enquiries, permits the approved CORS origin, and blocks unknown origin", async () => {

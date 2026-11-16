@@ -79,6 +79,23 @@ try {
     "idx_public_enquiry_notifications_pending",
   ];
   const missingIndexes = requiredIndexes.filter((index) => !paymentIndexes.includes(index));
+  const paymentMethodGuard = (await pool.query(
+    `SELECT tgname FROM pg_trigger
+     WHERE tgrelid = 'payments'::regclass
+       AND tgname = 'payments_reject_unsupported_digital_method'
+       AND tgenabled <> 'D'
+       AND NOT tgisinternal`
+  )).rows.length === 1;
+  let rejectsNewCardPayment = false;
+  await pool.query("BEGIN");
+  try {
+    await pool.query("INSERT INTO payments (method) VALUES ('CARD')");
+  } catch (error) {
+    if (error?.code === "23514") rejectsNewCardPayment = true;
+    else throw error;
+  } finally {
+    await pool.query("ROLLBACK");
+  }
 
   console.log(JSON.stringify({
     applied,
@@ -91,6 +108,8 @@ try {
     missingPaymentColumns,
     missingPaymentNotificationColumns,
     missingIndexes,
+    paymentMethodGuard,
+    rejectsNewCardPayment,
   }));
 
   if (
@@ -100,7 +119,9 @@ try {
     missingEnquiryNotificationColumns.length > 0 ||
     missingPaymentColumns.length > 0 ||
     missingPaymentNotificationColumns.length > 0 ||
-    missingIndexes.length > 0
+    missingIndexes.length > 0 ||
+    !paymentMethodGuard ||
+    !rejectsNewCardPayment
   ) process.exitCode = 1;
 } catch (error) {
   if (error?.code === "SUPABASE_CA_CERT_REQUIRED" || error?.code === "SUPABASE_CA_CERT_INVALID") {

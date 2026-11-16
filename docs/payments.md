@@ -2,17 +2,18 @@
 
 ## Supported customer payment methods
 
-FreClean Core accepts only these payment methods:
+FreClean accepts only these payment methods:
 
-1. USDT — BEP20 / BNB Smart Chain
-2. USDT — TRC20 / TRON
-3. USDT — Solana
-4. USDT — Celo
-5. CeloHT DApp (a separate handoff, not USDT)
+1. USDT on the FreClean-approved BNB Smart Chain (BEP20), TRON (TRC20),
+   Solana, or Celo network.
+2. CeloHT DApp as a separate payment route, not USDT.
+3. Cash in person at authorized FreClean physical points of sale only.
 
-No card or cash payment route is implemented. Historical payment rows and the
-original `0001_init.sql` migration are retained for data integrity; new API
-requests accept only `USDT` and `CELOHT_DAPP`.
+Cash is never an online or remote option. No card-network payment method is
+accepted. The API supports the two digital routes; cash is handled in person at
+authorized physical points of sale, not through this API. Historical payment
+rows and the original `0001_init.sql` migration are retained for data
+integrity; new API requests accept only `USDT` and `CELOHT_DAPP`.
 
 ## Core flow and API
 
@@ -31,8 +32,11 @@ requests accept only `USDT` and `CELOHT_DAPP`.
   payment. `GET /api/payments/admin` requires the ADMIN role and lists payment,
   customer, order/booking, amount, asset, network, address, transaction,
   status, and verification date.
-- A payment is marked `PAID` only after a successful server-side chain
-  verification. Unconfirmed transactions remain `VERIFYING`; provider
+- A submitted USDT transaction is checked server-side for the selected network,
+  token, recipient, amount, and finality. A successful check leaves the payment
+  in `VERIFYING`; it is not confirmation of payment. An ADMIN or OWNER must
+  manually confirm it through `POST /api/payments/:paymentId/confirm` with a
+  recorded confirmation note before the payment becomes `PAID`. Provider
   failures do not produce a success response. A transaction hash is reserved
   with a unique database index to prevent replay.
 - The payment, order/booking payment state, audit record, and customer/admin
@@ -51,14 +55,9 @@ client bundles or duplicate them in other server modules.
 | USDT Solana | `33FM1eKWBNWfA6qDf1EFZ8Ab6U6RiXhJkG6NyFL1wTYf` | `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB` |
 | USDT Celo | `0xcbe30a91dbc6a2423c30d8c8dd0547b8dcb0e044` | `0x48065fbbe25f71c9282ddf5e1cd6d6a887483d5e` |
 
-Tether's [supported protocol list](https://tether.to/en/supported-protocols/)
-confirms support for these four networks and publishes the TRON, Solana, and
-Celo token identifiers. The page identifies BNB Smart Chain support but does
-not list its USDT contract address. Independently confirm the BNB token
-identifier and token decimals against authoritative issuer/explorer records
-before enabling production payments. Keep `USDT_PAYMENTS_ENABLED=false`
-until this verification, provider tests, and wallet ownership checks are
-complete.
+FreClean has approved these four networks. Keep
+`USDT_PAYMENTS_ENABLED=false` until production RPC configuration, receiving
+address ownership checks, and operational payment tests are complete.
 
 ## Network verification
 
@@ -85,27 +84,30 @@ and URLs remain server-side.
 
 ## CeloHT DApp
 
-CeloHT remains its own `CELOHT_DAPP` payment method. Its handoff URL is supplied
-through `CELOHT_DAPP_URL`; it is never represented as USDT. The Core repository
-contains no DApp settlement callback or verifiable CeloHT transaction adapter.
-Consequently, a CeloHT handoff remains `PENDING` until a real server-side
-settlement integration is supplied; customers and admins must not treat a
-DApp redirect or customer-submitted hash as payment confirmation.
+CeloHT is a separate, FreClean-confirmed `CELOHT_DAPP` payment route. Its
+handoff URL is supplied through `CELOHT_DAPP_URL`; it is never represented as
+USDT. The Core repository contains no DApp settlement callback or verifiable
+CeloHT transaction adapter. An authorized administrator must check the
+external payment independently and manually confirm it with a recorded note.
+A DApp redirect or customer-submitted hash is not confirmation.
 
 ## Statuses, administration, and notifications
 
 Current statuses are `PENDING`, `VERIFYING`, `PAID`, `FAILED`, `EXPIRED`,
-`CANCELLED`, and `REFUNDED`. Only the backend verifier can mark USDT as `PAID`.
-Admin access is authenticated and role-gated; transaction explorer URLs are
-derived from the payment's persisted network.
+`CANCELLED`, and `REFUNDED`. Only an authorized administrator's explicit
+confirmation marks an eligible payment as `PAID`. USDT must first pass the
+server-side chain checks; CeloHT must first be independently checked outside
+the Core API. The confirmation note and administrator identity are recorded in
+the audit log. Admin access is authenticated and role-gated; transaction
+explorer URLs are derived from the payment's persisted network.
 
-After verification succeeds, a transactional outbox queues a customer receipt
-and an admin notice with the customer, order/booking, amount, USDT network,
-transaction hash, and `PAID` status. The notification workers retry transient
-delivery failures up to five times with increasing delays, persist safe error
-codes, and use stable Resend idempotency keys. Resend credentials stay in the
-server environment; malformed or missing production configuration prevents
-startup.
+After an administrator confirms payment, a transactional outbox queues a
+customer receipt and an admin notice. USDT receipts include the network and
+transaction hash; CeloHT receipts identify the separate route. The
+notification workers retry transient delivery failures up to five times with
+increasing delays, persist safe error codes, and use stable Resend idempotency
+keys. Resend credentials stay in the server environment; malformed or missing
+production configuration prevents startup.
 
 ## Environment and production deployment
 
@@ -143,8 +145,10 @@ npm start
 ```
 
 `0005_crypto-payments.sql` is additive and retains existing payment history.
-`0007_notification-retry-safety.sql` adds the payment outbox retry timestamp;
-apply it before deploying the updated notification worker.
+`0007_notification-retry-safety.sql` adds the payment outbox retry timestamp.
+`0008_disable-card-payment-inserts.sql` prevents new legacy card or generic
+crypto payment rows while preserving existing history and the in-person cash
+route. Apply all migrations before deploying the API.
 Test it against both an empty schema and a copy of the current production
 schema before deployment. The API repository has no website checkout, product
 order-creation API, admin dashboard UI, or CeloHT settlement integration.
@@ -167,13 +171,14 @@ does not make the complete customer payment journey production-ready.
 
 - [ ] Apply migration 0005 to a clean database and a production-like existing
       database copy; verify existing payment rows remain unchanged.
-- [ ] Independently verify all four official token identifiers and decimals.
+- [ ] Apply migration 0008 and verify it rejects new legacy payment methods
+      without changing existing payment history or the cash-at-point-of-sale route.
 - [ ] Verify all four receiving addresses and mainnet RPC endpoints.
 - [ ] Run success, wrong-network, wrong-token, wrong-recipient, underpayment,
       failed-transaction, and duplicate-hash tests for every chain.
 - [ ] Test customer-owned order/booking payment creation and status updates.
-- [ ] Test CeloHT DApp settlement callback before allowing it to be treated as
-      paid.
+- [ ] Test the administrator-only manual confirmation flow for verified USDT
+      and independently checked CeloHT payments.
 - [ ] Test customer/admin email delivery and outbox retry behavior.
 - [ ] Integrate and test the website checkout and admin interface in their own
       repositories.

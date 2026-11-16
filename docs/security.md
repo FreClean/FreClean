@@ -15,7 +15,8 @@ having a library installed as proof a class of bug is handled.
 - [ ] Payment manipulation: prices/availability always recalculated server-side
 - [ ] Crypto payment verification: server-side network, token, recipient, amount, success, and finality checks
 - [ ] Payment replay protection: unique transaction hashes and idempotent payment creation
-- [ ] CeloHT settlement: keep payments pending until an authoritative server-side integration exists
+- [ ] Payment confirmation: require explicit administrator action after checks; retain the actor and confirmation note in the audit log
+- [ ] CeloHT settlement: require independent external review and administrator manual confirmation; a handoff alone never marks payment paid
 - [ ] Contact delivery: persist enquiries and notification jobs atomically; retry Resend delivery idempotently
 - [ ] Secrets: never committed, never in frontend bundles
 - [ ] Dependency vulnerabilities: `npm audit` in CI

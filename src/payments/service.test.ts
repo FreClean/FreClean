@@ -12,7 +12,7 @@ vi.mock("../db.js", () => ({
 }));
 vi.mock("./crypto/verify.js", () => ({ verifyUsdtTransfer }));
 
-import { createPayment, submitTransactionHash } from "./service.js";
+import { confirmPayment, createPayment, submitTransactionHash } from "./service.js";
 import { usdtNetworkConfig } from "./config.js";
 
 const originalEnvironment = { ...process.env };
@@ -172,13 +172,12 @@ describe("payment creation", () => {
     })).rejects.toMatchObject({ status: 503 });
   });
 
-  it("marks the order paid and queues both emails only after chain verification succeeds", async () => {
-    const paidPayment = { ...paymentRow, status: "PAID", verified_at: new Date("2026-01-01T00:01:00Z") };
+  it("requires manual confirmation after chain verification succeeds", async () => {
+    const verifiedPayment = { ...paymentRow, status: "VERIFYING", verified_at: new Date("2026-01-01T00:01:00Z") };
     dbQuery
       .mockResolvedValueOnce([paymentRow])
       .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([paidPayment]);
-    process.env.CONTACT_EMAIL = "contact@freclean.com";
+      .mockResolvedValueOnce([verifiedPayment]);
     verifyUsdtTransfer.mockResolvedValue({ status: "PAID", confirmations: 20 });
     poolConnect.mockResolvedValue({ query: clientQuery, release: clientRelease });
     clientQuery
@@ -189,8 +188,6 @@ describe("payment creation", () => {
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [paymentRow] })
-      .mockResolvedValueOnce({ rows: [{ full_name: "Test Customer", email: "customer@example.com" }] })
-      .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
       .mockResolvedValueOnce({ rows: [] })
@@ -203,15 +200,98 @@ describe("payment creation", () => {
       transactionHash: "a".repeat(64),
     });
 
-    expect(result.status).toBe("PAID");
+    expect(result.status).toBe("VERIFYING");
     expect(verifyUsdtTransfer).toHaveBeenCalledWith({
       network: "TRC20",
       transactionHash: "a".repeat(64),
       amount: "12.34",
     });
     expect(clientQuery).toHaveBeenCalledWith(
-      expect.stringContaining("SET status = CASE WHEN status IN ('CHECKOUT','PAYMENT_PENDING') THEN 'PAID'"),
-      [paymentRow.order_id]
+      expect.stringContaining("verification_status = 'VERIFIED'"),
+      [paymentRow.id]
+    );
+    expect(clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO payment_notification_outbox"),
+      expect.anything()
+    );
+    expect(clientQuery).not.toHaveBeenCalledWith(
+      expect.stringContaining("payment_status = 'PAID'"),
+      expect.anything()
+    );
+  });
+
+  it("manually confirms a chain-verified payment and records the administrator action", async () => {
+    const verifiedPayment = {
+      ...paymentRow,
+      status: "VERIFYING",
+      verification_status: "VERIFIED",
+      transaction_hash: "e".repeat(64),
+    };
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
+    poolConnect.mockResolvedValue({ query: clientQuery, release: clientRelease });
+    clientQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [verifiedPayment] })
+      .mockResolvedValueOnce({ rows: [{ full_name: "Test Customer", email: "customer@example.com" }] })
+      .mockResolvedValueOnce({ rows: [{ ...verifiedPayment, status: "PAID" }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await confirmPayment({
+      paymentId: paymentRow.id,
+      adminId: "00000000-0000-4000-8000-000000000004",
+      confirmationNote: "Matched the receipt in the verified network explorer.",
+    });
+
+    expect(result.status).toBe("PAID");
+    expect(clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("PAYMENT_MANUALLY_CONFIRMED"),
+      expect.arrayContaining(["00000000-0000-4000-8000-000000000004", paymentRow.id])
+    );
+    expect(clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO payment_notification_outbox"),
+      expect.arrayContaining([paymentRow.id, "customer@example.com", expect.any(String), "contact@freclean.com"])
+    );
+  });
+
+  it("allows manual confirmation of CeloHT only through the administrator flow", async () => {
+    const celohtPayment = {
+      ...paymentRow,
+      method: "CELOHT_DAPP" as const,
+      asset: null,
+      network: null,
+      receiving_address: null,
+      currency: "USD",
+      status: "PENDING",
+    };
+    process.env.CONTACT_EMAIL = "contact@freclean.com";
+    poolConnect.mockResolvedValue({ query: clientQuery, release: clientRelease });
+    clientQuery
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [celohtPayment] })
+      .mockResolvedValueOnce({ rows: [{ full_name: "Test Customer", email: "customer@example.com" }] })
+      .mockResolvedValueOnce({ rows: [{ ...celohtPayment, status: "PAID" }] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] })
+      .mockResolvedValueOnce({ rows: [] });
+
+    const result = await confirmPayment({
+      paymentId: paymentRow.id,
+      adminId: "00000000-0000-4000-8000-000000000004",
+      confirmationNote: "Checked the separate CeloHT settlement record.",
+    });
+
+    expect(result.status).toBe("PAID");
+    expect(clientQuery).toHaveBeenCalledWith(
+      expect.stringContaining("PAYMENT_MANUALLY_CONFIRMED"),
+      expect.arrayContaining([expect.any(String), paymentRow.id])
     );
     expect(clientQuery).toHaveBeenCalledWith(
       expect.stringContaining("INSERT INTO payment_notification_outbox"),

@@ -16,6 +16,7 @@ interface PaymentRow {
   receiving_address: string | null;
   transaction_hash: string | null;
   status: string;
+  verification_status?: string;
   created_at: Date;
   updated_at: Date;
   verified_at: Date | null;
@@ -291,6 +292,127 @@ export async function listPayments(limit: number) {
   }));
 }
 
+export async function confirmPayment(input: {
+  paymentId: string;
+  adminId: string;
+  confirmationNote: string;
+}) {
+  const confirmationNote = input.confirmationNote.trim();
+  if (confirmationNote.length < 10 || confirmationNote.length > 500) {
+    throw Object.assign(new Error("Confirmation note must be 10-500 characters"), { status: 400 });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    const payment = (await client.query<PaymentRow>(
+      `SELECT id, customer_id, order_id, booking_id, method, asset, network,
+              amount::text, currency, receiving_address, transaction_hash, status,
+              verification_status, created_at, updated_at, verified_at
+       FROM payments WHERE id = $1 FOR UPDATE`,
+      [input.paymentId]
+    )).rows[0];
+    if (!payment) throw Object.assign(new Error("Payment not found"), { status: 404 });
+    if (payment.status === "PAID") {
+      await client.query("COMMIT");
+      return presentPayment(payment);
+    }
+
+    const verifiedUsdt = payment.method === "USDT" &&
+      payment.status === "VERIFYING" &&
+      payment.verification_status === "VERIFIED" &&
+      Boolean(payment.network && payment.transaction_hash);
+    const checkedCeloht = payment.method === "CELOHT_DAPP" &&
+      payment.status === "PENDING" &&
+      payment.asset === null &&
+      payment.network === null;
+    if (!verifiedUsdt && !checkedCeloht) {
+      throw Object.assign(new Error("Payment is not eligible for manual confirmation"), { status: 409 });
+    }
+
+    const adminEmail = process.env.CONTACT_EMAIL?.trim();
+    if (!adminEmail) {
+      throw Object.assign(new Error("CONTACT_EMAIL is required for payment notifications"), { status: 503 });
+    }
+    const customer = (await client.query<{ full_name: string; email: string }>(
+      "SELECT full_name, email FROM users WHERE id = $1",
+      [payment.customer_id]
+    )).rows[0];
+    if (!customer) throw new Error("Payment customer could not be loaded for notification");
+
+    const confirmedPayment = (await client.query<PaymentRow>(
+      `UPDATE payments
+       SET status = 'PAID', verification_status = 'VERIFIED', verified_at = now(), updated_at = now()
+       WHERE id = $1
+       RETURNING id, customer_id, order_id, booking_id, method, asset, network,
+                 amount::text, currency, receiving_address, transaction_hash, status,
+                 verification_status, created_at, updated_at, verified_at`,
+      [payment.id]
+    )).rows[0];
+    if (!confirmedPayment) throw new Error("Manually confirmed payment could not be loaded");
+    if (payment.order_id) {
+      await client.query(
+        `UPDATE orders
+         SET status = CASE WHEN status IN ('CHECKOUT','PAYMENT_PENDING') THEN 'PAID' ELSE status END,
+             payment_status = 'PAID', updated_at = now()
+         WHERE id = $1`,
+        [payment.order_id]
+      );
+    }
+    if (payment.booking_id) {
+      await client.query(
+        "UPDATE bookings SET payment_status = 'PAID', updated_at = now() WHERE id = $1",
+        [payment.booking_id]
+      );
+    }
+    await client.query(
+      `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, metadata)
+       VALUES ($1,'PAYMENT_MANUALLY_CONFIRMED','PAYMENT',$2,$3::jsonb)`,
+      [
+        input.adminId,
+        payment.id,
+        JSON.stringify({
+          method: payment.method,
+          network: payment.network,
+          transactionHash: payment.transaction_hash,
+          confirmationNote,
+        }),
+      ]
+    );
+    const notificationPayload = {
+      paymentId: payment.id,
+      customerName: customer.full_name,
+      customerEmail: customer.email,
+      orderId: payment.order_id,
+      bookingId: payment.booking_id,
+      paymentMethod: payment.method,
+      amount: payment.amount,
+      currency: payment.currency,
+      network: payment.network,
+      transactionHash: payment.transaction_hash,
+      status: "PAID" as const,
+    };
+    await client.query(
+      `INSERT INTO payment_notification_outbox (payment_id, recipient_type, recipient_email, payload)
+       VALUES ($1,'CUSTOMER',$2,$3::jsonb),($1,'ADMIN',$4,$3::jsonb)
+       ON CONFLICT (payment_id, recipient_type) DO NOTHING`,
+      [
+        payment.id,
+        customer.email,
+        JSON.stringify({ ...notificationPayload, recipientType: "CUSTOMER" }),
+        adminEmail,
+      ]
+    );
+    await client.query("COMMIT");
+    return presentPayment(confirmedPayment);
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function submitTransactionHash(input: {
   paymentId: string;
   customerId: string;
@@ -396,29 +518,9 @@ export async function submitTransactionHash(input: {
     }
 
     if (result.status === "PAID") {
-      const adminEmail = process.env.CONTACT_EMAIL?.trim();
-      if (!adminEmail) {
-        throw Object.assign(new Error("CONTACT_EMAIL is required for payment notifications"), { status: 503 });
-      }
-      const customer = (await client.query<{ full_name: string; email: string }>(
-        "SELECT full_name, email FROM users WHERE id = $1",
-        [input.customerId]
-      )).rows[0];
-      if (!customer) throw new Error("Payment customer could not be loaded for notification");
-      const notificationPayload = {
-        paymentId: payment.id,
-        customerName: customer.full_name,
-        customerEmail: customer.email,
-        orderId: payment.order_id,
-        bookingId: payment.booking_id,
-        amount: payment.amount,
-        network: payment.network,
-        transactionHash: input.transactionHash,
-        status: "PAID",
-      };
       await client.query(
         `UPDATE payments
-         SET status = 'PAID', verification_status = 'VERIFIED', verified_at = now(), updated_at = now()
+         SET status = 'VERIFYING', verification_status = 'VERIFIED', verified_at = now(), updated_at = now()
          WHERE id = $1`,
         [input.paymentId]
       );
@@ -440,39 +542,13 @@ export async function submitTransactionHash(input: {
          VALUES ($1,'PASSED')`,
         [input.paymentId]
       );
-      if (payment.order_id) {
-        await client.query(
-          `UPDATE orders
-           SET status = CASE WHEN status IN ('CHECKOUT','PAYMENT_PENDING') THEN 'PAID' ELSE status END,
-               payment_status = 'PAID', updated_at = now()
-           WHERE id = $1`,
-          [payment.order_id]
-        );
-      }
-      if (payment.booking_id) {
-        await client.query(
-          `UPDATE bookings SET payment_status = 'PAID', updated_at = now() WHERE id = $1`,
-          [payment.booking_id]
-        );
-      }
       await client.query(
         `INSERT INTO audit_logs (actor_id, action, entity_type, entity_id, metadata)
-         VALUES ($1,'PAYMENT_VERIFIED','PAYMENT',$2,$3::jsonb)`,
+         VALUES ($1,'PAYMENT_CHAIN_VERIFIED','PAYMENT',$2,$3::jsonb)`,
         [
           input.customerId,
           input.paymentId,
           JSON.stringify({ network: payment.network, transactionHash: input.transactionHash }),
-        ]
-      );
-      await client.query(
-        `INSERT INTO payment_notification_outbox (payment_id, recipient_type, recipient_email, payload)
-         VALUES ($1,'CUSTOMER',$2,$3::jsonb),($1,'ADMIN',$4,$3::jsonb)
-         ON CONFLICT (payment_id, recipient_type) DO NOTHING`,
-        [
-          input.paymentId,
-          customer.email,
-          JSON.stringify({ ...notificationPayload, recipientType: "CUSTOMER" }),
-          adminEmail,
         ]
       );
     } else if (result.status === "FAILED") {

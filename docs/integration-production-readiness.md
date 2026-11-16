@@ -32,8 +32,8 @@ Local validation on 2026-11-16:
 | Public website | `FreClean/freclean-website` | `FRECLEAN_PUBLIC_REQUEST_URL`, approved CORS origin | Browser submission with invalid and valid synthetic data | Current script submits to Core, but a separate contact service remains configured in the website repository; deployment status is unverified |
 | Contact enquiries | FreClean Core + Resend | `CONTACT_EMAIL=contact@freclean.com`, `RESEND_API_KEY`, verified `RESEND_FROM_EMAIL` | Submit a contact enquiry, confirm durable outbox creation and delivery/retry | Transactional outbox and retry worker implemented; live provider delivery unverified |
 | GitHub Actions | `FreClean/.github` or this repository workflow | Repository secrets only where needed | Workflow run status | Organization repository exists; local checks pass, but the latest uncommitted changes have no remote workflow result |
-| USDT payments | FreClean Core | `USDT_PAYMENTS_ENABLED`, BSC/TRON/Solana/Celo RPC URLs | Mainnet contract, recipient, amount, success, confirmation/finality and replay checks | API foundation implemented; disabled pending provider and token verification |
-| CeloHT DApp | Approved CeloHT DApp | `CELOHT_DAPP_URL` | DApp handoff plus authoritative settlement callback | Separate handoff represented; settlement callback is not in this repository |
+| USDT payments | FreClean Core | `USDT_PAYMENTS_ENABLED`, BSC/TRON/Solana/Celo RPC URLs | Mainnet contract, recipient, amount, success, confirmation/finality and replay checks, followed by ADMIN/OWNER manual confirmation | Four networks are approved; checkout remains disabled until production configuration and operational checks pass |
+| CeloHT DApp | Confirmed CeloHT route | `CELOHT_DAPP_URL` | DApp handoff, external receipt review, and ADMIN/OWNER manual confirmation | Separate handoff represented; no automated settlement callback is in this repository |
 | Payment notifications | Resend | Existing `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, `CONTACT_EMAIL` | Customer/admin delivery and outbox retry in a controlled environment | Outbox implemented; production delivery unverified |
 
 ## Accessible External Repositories
@@ -93,20 +93,23 @@ Safe verification: liveness 200, readiness 200, controlled invalid-origin 403, c
 ### USDT Payment Integration
 
 The Core exposes authenticated payment creation and transaction-hash submission
-for USDT BEP20, TRC20, Solana, and Celo. It retrieves order/booking prices from
-the database and checks chain, token, recipient, amount, transaction success,
-confirmations/finality, and transaction replay before setting `PAID`.
+for FreClean-approved USDT BEP20, TRC20, Solana, and Celo. It retrieves
+order/booking prices from the database and checks chain, token, recipient,
+amount, transaction success, confirmations/finality, and transaction replay.
+A successful chain check leaves the payment awaiting an ADMIN/OWNER's manual
+confirmation through `POST /api/payments/:paymentId/confirm`; it does not mark
+the payment paid by itself.
 
 Required before enablement: `USDT_PAYMENTS_ENABLED=true`, tested mainnet
 `BSC_RPC_URL`, `TRON_RPC_URL`, `SOLANA_RPC_URL`, and `CELO_RPC_URL`. Set
-`TRONGRID_API_KEY` only when required by the chosen TRON provider. The BNB
-contract address still requires independent confirmation from an authoritative
-issuer/explorer record. See [`payments.md`](payments.md).
+`TRONGRID_API_KEY` only when required by the chosen TRON provider. See
+[`payments.md`](payments.md) for the approved networks, configured addresses,
+and manual confirmation flow.
 
-USDT checkout remains disabled until RPC providers, contract identifiers,
-wallet control, migrations, and end-to-end payment tests have been confirmed.
-CeloHT remains a separate handoff; no settlement callback is available here,
-so a redirect cannot mark a payment paid.
+USDT checkout remains disabled until RPC providers, receiving-address control,
+migrations, and end-to-end payment tests have been confirmed. CeloHT remains a
+separate handoff; an administrator must independently check external payment
+and manually confirm it. A redirect cannot mark a payment paid.
 
 ### Notifications
 
@@ -162,11 +165,11 @@ retry state without exposing customer content or provider credentials in logs.
 
 ### P1: Payments
 
-1. Independently validate the BNB token identifier and all four mainnet RPC providers.
+1. Verify production RPC providers and receiving-address control for the four approved networks.
 2. Verify migrations 0005 and 0006 against clean and production-like existing database copies.
-3. Implement/test CeloHT DApp settlement callback using its authoritative contract/provider.
+3. Test the CeloHT external handoff and administrator confirmation procedure.
 4. Integrate and test website payment UI and product-order APIs in their owning repository.
-5. Execute controlled success, mismatch, finality, replay, and email delivery tests on all networks.
+5. Execute controlled success, mismatch, finality, replay, manual-confirmation, and email delivery tests on all networks.
 
 ### P2: Internationalization, SEO, and Operations
 
@@ -186,6 +189,6 @@ The project cannot be declared production-ready until:
 - The duplicate website contact service is decommissioned or proven unused, and the Core contact flow delivers to `contact@freclean.com`.
 - Admin access is tested with non-production identities.
 - USDT payments remain disabled until all network and payment acceptance checks pass.
-- CeloHT DApp settlement is independently verifiable and tested before it is treated as paid.
+- CeloHT DApp receipts are independently checked and manually confirmed by an administrator before being treated as paid.
 - Notification providers are configured or explicitly reported unavailable.
 - Owner approves production deployment and migration execution.

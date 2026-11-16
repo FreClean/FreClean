@@ -26,7 +26,9 @@ describe("payment notification delivery", () => {
       customerEmail: "customer@example.com",
       orderId: "order-1",
       bookingId: null,
+      paymentMethod: "USDT",
       amount: "20.00",
+      currency: "USDT",
       network: "TRC20",
       transactionHash: "a".repeat(64),
       status: "PAID",
@@ -55,7 +57,9 @@ describe("payment notification delivery", () => {
       customerEmail: "customer@example.com",
       orderId: null,
       bookingId: "booking-1",
+      paymentMethod: "USDT",
       amount: "20.00",
+      currency: "USDT",
       network: "CELO",
       transactionHash: "b".repeat(64),
       status: "PAID",
@@ -73,12 +77,43 @@ describe("payment notification delivery", () => {
       customerEmail: "customer@example.com",
       orderId: "order-3",
       bookingId: null,
+      paymentMethod: "USDT",
       amount: "20.00",
+      currency: "USDT",
       network: "TRC20",
       transactionHash: "c".repeat(64),
       status: "PAID",
       recipientType: "CUSTOMER",
     }, "customer@example.com")).rejects.toThrow(/RESEND_API_KEY is not configured/);
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("uses the distinct CeloHT route in a manual confirmation notice", async () => {
+    process.env.RESEND_API_KEY = "re_test_key";
+    process.env.RESEND_FROM_EMAIL = "FreClean <payments@example.com>";
+    fetchMock.mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await sendPaymentNotification({
+      paymentId: "payment-4",
+      customerName: "Test Customer",
+      customerEmail: "customer@example.com",
+      orderId: "order-4",
+      bookingId: null,
+      paymentMethod: "CELOHT_DAPP",
+      amount: "20.00",
+      currency: "USD",
+      network: null,
+      transactionHash: null,
+      status: "PAID",
+      recipientType: "CUSTOMER",
+    }, "customer@example.com");
+
+    const [, options] = fetchMock.mock.calls[0]!;
+    const email = JSON.parse(options.body);
+    expect(email.subject).toBe("CeloHT payment confirmed");
+    expect(email.text).toContain("Payment method: CeloHT DApp");
+    expect(email.text).toContain("Amount: 20.00 USD");
+    expect(email.text).not.toContain("Network:");
   });
 });

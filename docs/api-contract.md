@@ -31,14 +31,15 @@ and the authoritative refund domain are integrated.
 
 ## Payment contract
 
-The only new payment methods are `USDT` and `CELOHT_DAPP`. USDT networks are `BEP20`, `TRC20`, `SOLANA`, and `CELO`; the network, token, amount, and receiving address are selected or calculated server-side from the payment intent. CeloHT remains a separate DApp handoff. Payment statuses are `PENDING`, `VERIFYING`, `PAID`, `FAILED`, `EXPIRED`, `CANCELLED`, or `REFUNDED`; a customer-provided transaction hash never marks a payment paid.
+The only digital payment methods are USDT on FreClean-approved `BEP20`, `TRC20`, `SOLANA`, or `CELO`, and the separately confirmed `CELOHT_DAPP` route. Cash is accepted in person at authorized FreClean physical points of sale only; it is never offered online or remotely. No card-network payment method is accepted. Payment statuses are `PENDING`, `VERIFYING`, `PAID`, `FAILED`, `EXPIRED`, `CANCELLED`, or `REFUNDED`; a customer-provided transaction hash or DApp redirect never marks a payment paid.
 
 - `POST /api/payments`: authenticated customer creates an order- or booking-linked payment. Requires an `Idempotency-Key` header and exactly one of `orderId` or `bookingId`. Body fields are `paymentMethod` (`USDT` or `CELOHT_DAPP`) and, for USDT, `network`. The server retrieves the amount from the owned order/booking.
 - `POST /api/payments/:paymentId/transaction`: authenticated owner submits only `transactionHash` for a USDT payment. The API independently verifies the selected mainnet token, recipient, amount, success, and confirmations.
+- `POST /api/payments/:paymentId/confirm`: ADMIN-only manual confirmation with a recorded note. USDT must first pass server-side chain checks; CeloHT must be independently checked outside the Core API.
 - `GET /api/payments/:paymentId`: retrieves the authenticated customer's payment.
 - `GET /api/payments/admin`: ADMIN-only payment list with customer, order/booking, amount, asset, network, recipient, transaction, status, and verification date.
 
-The customer should display the selected network and its configured receiving address and warn: “Send USDT only through the selected network. Sending funds through another network may result in permanent loss of funds.” Payment verification and notification behavior is documented in [`payments.md`](payments.md). Existing pre-migration payment rows are retained; the legacy schema migration is not rewritten.
+The customer should display the selected network and its configured receiving address and warn: “Send USDT only through the selected network. Sending funds through another network may result in permanent loss of funds.” Payment verification and manual confirmation behavior is documented in [`payments.md`](payments.md). Existing pre-migration payment rows are retained; the legacy schema migration is not rewritten.
 
 ## Public website enquiries
 
@@ -68,6 +69,8 @@ Request JSON accepts legacy contact fields and the current website booking field
 
 For compatibility, either `fullName` or `name` is required, and either `message` or `notes` is required. The website may submit `notes` alone. All submitted known fields are persisted. `type` is exactly `SERVICE` or `CONTACT` and defaults to `SERVICE`. Names are 2-100 characters, email is 254 characters or fewer, phone is optional with 32 characters or fewer, service/property/location values use bounded text validation, date is an ISO date, and time is 24-hour `HH:MM`. Notes or message text is 10-5000 characters. Unknown fields are rejected. The optional empty honeypot field `website` may be included by the website client. The request body is limited to 16 KB, and the route allows 10 submissions per source address per 15 minutes.
 
+The optional `payment_method` value records an enquiry preference only; it does not create, confirm, or collect payment. Cash is not an allowed online enquiry value.
+
 Success:
 
 ```http
@@ -79,13 +82,13 @@ Content-Type: application/json
 
 The enquiry and its notification are committed together to PostgreSQL. A background worker sends the notification through the existing Resend integration to `contact@freclean.com`; it uses the visitor's email as Reply-To and retries provider failures with backoff. The API success response means the enquiry is durably queued, not that Resend has already delivered it. Operational failures return `503` with the customer-safe message “Your message could not be sent right now. Please try again later.”; provider details are logged server-side only. Validation failures return `400` with field errors, duplicate submissions return `409`, body-limit violations return `413`, origin violations return `403`, and rate-limit violations return `429`. PII is not included in error responses.
 
-In production, CORS is restricted to the exact origin `https://freclean.com`. The production deployment must set `CORS_ORIGIN=https://freclean.com`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, a random 32-character-or-longer `ENQUIRY_SPAM_SECRET`, `CONTACT_EMAIL=contact@freclean.com`, `RESEND_API_KEY`, and a verified `RESEND_FROM_EMAIL`. Resend credentials remain server-only. USDT payments stay disabled unless `USDT_PAYMENTS_ENABLED=true` and all four mainnet RPC URLs are configured. The separate CeloHT option requires `CELOHT_DAPP_URL`; it remains pending until an authoritative settlement integration is implemented.
+In production, CORS is restricted to the exact origin `https://freclean.com`. The production deployment must set `CORS_ORIGIN=https://freclean.com`, `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, a random 32-character-or-longer `ENQUIRY_SPAM_SECRET`, `CONTACT_EMAIL=contact@freclean.com`, `RESEND_API_KEY`, and a verified `RESEND_FROM_EMAIL`. Resend credentials remain server-only. USDT payments stay disabled unless `USDT_PAYMENTS_ENABLED=true` and all four mainnet RPC URLs are configured. The separate CeloHT handoff requires `CELOHT_DAPP_URL`; an authorized administrator must manually confirm external settlement.
 
-Apply all migrations with `npm run db:migrate` before starting the API. Migration 0004 adds public-enquiry fields; migration 0005 adds crypto payment fields, order/booking payment state, replay protection, and payment notification outbox tables; migration 0006 adds the public-enquiry email outbox. These migrations preserve existing payment and enquiry records. Deployments must terminate TLS at the public HTTPS edge, expose `/health` and `/health/ready`, and run a real HTTPS smoke test before reporting the endpoint deployed. The Render core service is `https://freclean.onrender.com`; configure its Render Health Check Path as `/health`.
+Apply all migrations with `npm run db:migrate` before starting the API. Migration 0004 adds public-enquiry fields; migration 0005 adds payment fields, order/booking payment state, replay protection, and payment notification outbox tables; migration 0006 adds the public-enquiry email outbox; migration 0008 blocks new legacy card and generic crypto payment records while preserving historical records. Deployments must terminate TLS at the public HTTPS edge, expose `/health` and `/health/ready`, and run a real HTTPS smoke test before reporting the endpoint deployed. The Render core service is `https://freclean.onrender.com`; configure its Render Health Check Path as `/health`.
 
 ## Environment and deployment
 
-Runtime configuration is supplied through environment variables documented in `.env.example`. Secrets, database credentials, blockchain provider credentials, and wallet keys are never committed. Deployments apply migrations before starting the API, expose `/health` for liveness and `/health/ready` for database readiness, and support graceful `SIGTERM` shutdown. Readiness performs only `SELECT 1`, reports no connection details, and returns 503 on failure. The public website origin is `https://freclean.com`; USDT checkout remains disabled until provider configuration and mainnet verification are validated.
+Runtime configuration is supplied through environment variables documented in `.env.example`. Secrets, database credentials, blockchain provider credentials, and wallet keys are never committed. Deployments apply migrations before starting the API, expose `/health` for liveness and `/health/ready` for database readiness, and support graceful `SIGTERM` shutdown. Readiness performs only `SELECT 1`, reports no connection details, and returns 503 on failure. The public website origin is `https://freclean.com`; USDT checkout remains disabled until provider configuration and operational checks are validated.
 
 ## Release process
 

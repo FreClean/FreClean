@@ -58,9 +58,9 @@ This audit covers the FreClean core repository and read-only production smoke ch
 - New payment methods are USDT on BEP20, TRC20, Solana, and Celo, plus a separate CeloHT DApp handoff.
 - USDT payment amounts and receiving addresses are derived from persisted order/booking values and the server network configuration.
 - Mainnet chain, token, recipient, amount, success, confirmation/finality, and transaction-hash replay checks run server-side.
-- Payment/order state and customer/admin email outbox records are committed atomically after successful verification.
+- Successful chain checks leave USDT payments awaiting an explicit administrator confirmation; payment/order state and customer/admin email outbox records are committed atomically when the administrator confirms.
 - USDT payments are disabled by default; mainnet RPC, official token identifier, wallet ownership, and production database state remain unverified.
-- CeloHT is a separate handoff only; this repository does not contain its settlement callback or verifier.
+- CeloHT is a separate handoff; an administrator must independently check external settlement and manually confirm it.
 - Website checkout UI, product order creation, and admin dashboard UI are not tracked in this Core repository.
 
 ### Error handling
@@ -118,9 +118,8 @@ During the audit, one live readiness check returned 503 and another timed out at
 ## Automated Integration Coverage Added
 
 - Liveness and readiness responses.
-- Unauthenticated booking and cash routes.
+- Unauthenticated booking and payment routes.
 - Invalid and signed JWT behavior.
-- Card webhook disabled-by-default fail closed behavior.
 - Approved and disallowed public enquiry origins.
 
 Existing suites also cover public enquiry validation/persistence contracts, CORS, CORS origin behavior, rate limiting, HMAC signatures, RBAC, and JWT middleware.
@@ -137,7 +136,7 @@ The frontend must:
 6. Store and rotate refresh tokens according to secure frontend session rules; never expose JWT signing secrets.
 7. Handle HTTP 400, 401, 403, 409, 413, 429, 500, and readiness HTTP 503 responses.
 8. Submit booking identities only as server-issued UUID references; never infer customer identity or authorization from the browser.
-9. Treat payment success as server-authoritative only. Do not report payment as confirmed until the Core API verifier marks it `PAID`.
+9. Treat payment success as server-authoritative only. Do not report payment as confirmed until an authorized administrator manually confirms it through the Core API.
 10. Do not attempt direct Supabase database access; this backend owns PostgreSQL and does not expose Supabase authentication sessions.
 
 ## npm Vulnerability Audit

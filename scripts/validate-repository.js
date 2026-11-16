@@ -5,6 +5,10 @@ import path from "node:path";
 const root = process.cwd();
 const ignored = new Set([".git", "node_modules", "dist"]);
 const forbidden = new RegExp(["c", "U", "S", "D"].join(""), "i");
+const blockedPaymentBrands = new RegExp(
+  `\\b(?:${["v", "isa"].join("")}|${["master", "\\s*", "card"].join("")})\\b`,
+  "i"
+);
 const migrationDir = path.join(root, "database", "migrations");
 const migrations = readdirSync(migrationDir).filter((file) => file.endsWith(".sql")).sort();
 
@@ -27,8 +31,12 @@ function walk(directory) {
 }
 
 for (const file of walk(root)) {
-  if (forbidden.test(readFileSync(file, "utf8"))) {
+  const contents = readFileSync(file, "utf8");
+  if (forbidden.test(contents)) {
     throw new Error(`Forbidden legacy asset reference found in ${path.relative(root, file)}`);
+  }
+  if (blockedPaymentBrands.test(contents)) {
+    throw new Error(`Disallowed payment network brand reference found in ${path.relative(root, file)}`);
   }
 }
 

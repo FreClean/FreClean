@@ -3,7 +3,7 @@ import rateLimit from "express-rate-limit";
 import { z } from "zod";
 import { requireAuthentication } from "../auth/middleware.js";
 import { requireRole } from "../roles/rbac.js";
-import { createPayment, getPayment, listPayments, submitTransactionHash } from "./service.js";
+import { confirmPayment, createPayment, getPayment, listPayments, submitTransactionHash } from "./service.js";
 
 export const paymentsRouter = Router();
 
@@ -26,6 +26,9 @@ const createPaymentSchema = z.object({
 
 const transactionSchema = z.object({
   transactionHash: z.string().trim().min(32).max(128).regex(/^[A-Za-z0-9]+$/),
+}).strict();
+const confirmationSchema = z.object({
+  confirmationNote: z.string().trim().min(10).max(500),
 }).strict();
 
 const verifyRateLimit = rateLimit({
@@ -79,6 +82,21 @@ paymentsRouter.get("/admin", requireAuthentication, requireRole("ADMIN"), async 
   try {
     const limit = z.coerce.number().int().min(1).max(100).default(50).parse(req.query.limit);
     res.json({ payments: await listPayments(limit) });
+  } catch (error) {
+    next(error);
+  }
+});
+
+paymentsRouter.post("/:paymentId/confirm", requireAuthentication, requireRole("ADMIN"), async (req, res, next) => {
+  try {
+    const paymentId = z.string().uuid().parse(req.params.paymentId);
+    const body = confirmationSchema.parse(req.body);
+    const payment = await confirmPayment({
+      paymentId,
+      adminId: req.user!.id,
+      confirmationNote: body.confirmationNote,
+    });
+    res.json({ payment });
   } catch (error) {
     next(error);
   }

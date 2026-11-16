@@ -1,4 +1,4 @@
-import type { PaymentNetwork } from "./model.js";
+import type { PaymentMethod, PaymentNetwork } from "./model.js";
 import { sendResendEmail } from "../notifications/resend.js";
 
 export interface PaymentNotification {
@@ -7,9 +7,11 @@ export interface PaymentNotification {
   customerEmail: string;
   orderId: string | null;
   bookingId: string | null;
+  paymentMethod: PaymentMethod;
   amount: string;
-  network: PaymentNetwork;
-  transactionHash: string;
+  currency: string;
+  network: PaymentNetwork | null;
+  transactionHash: string | null;
   status: "PAID";
   recipientType: "CUSTOMER" | "ADMIN";
 }
@@ -28,16 +30,19 @@ export async function sendPaymentNotification(notification: PaymentNotification,
   const target = notification.orderId
     ? `Order ${notification.orderId}`
     : `Booking ${notification.bookingId}`;
-  const details = [
+  const details: [string, string][] = [
     ["Customer", notification.customerName],
     ["Email", notification.customerEmail],
     ["Order/booking", target],
-    ["Amount", `${notification.amount} USDT`],
-    ["Network", notification.network],
-    ["Transaction hash", notification.transactionHash],
+    ["Payment method", notification.paymentMethod === "USDT" ? "USDT" : "CeloHT DApp"],
+    ["Amount", `${notification.amount} ${notification.currency}`],
     ["Payment status", notification.status],
-  ] as const;
-  const heading = notification.recipientType === "CUSTOMER" ? "USDT payment confirmed" : "FreClean payment received";
+  ];
+  if (notification.network) details.push(["Network", notification.network]);
+  if (notification.transactionHash) details.push(["Transaction hash", notification.transactionHash]);
+  const heading = notification.paymentMethod === "USDT"
+    ? notification.recipientType === "CUSTOMER" ? "USDT payment confirmed" : "FreClean payment received"
+    : "CeloHT payment confirmed";
   const rows = details
     .map(([label, value]) => `<tr><th align="left">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
     .join("");

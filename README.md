@@ -49,18 +49,21 @@ docs/                  architecture and payment/security documentation
 
 ## Payment policy
 
-The only supported customer payment options are USDT BEP20, USDT TRC20,
-USDT Solana, USDT Celo, and the separate CeloHT DApp handoff. New payment
-requests use `USDT` or `CELOHT_DAPP`; legacy payment rows remain available for
-historical recordkeeping. USDT payments are server-verified against the
-network-specific token identifier, recipient, amount, success, and finality
-before the payment or order/booking can become paid. See
+The only supported customer payment options are USDT on FreClean-approved
+BEP20, TRC20, Solana, or Celo networks, and the separate confirmed CeloHT DApp
+route. Cash is accepted in person at authorized FreClean physical points of
+sale only; it is never offered online or remotely. New payment requests use
+`USDT` or `CELOHT_DAPP`; legacy payment rows remain available for historical
+recordkeeping. USDT transfers are checked server-side, but an authorized
+administrator must manually confirm receipt before the payment or
+order/booking can become paid. See
 [`docs/payments.md`](docs/payments.md) for the API, configuration, migration,
 verification details, production gates, and acceptance checklist.
 
-USDT checkout is disabled by default. The API repository does not include
-website checkout UI, product order creation, or CeloHT settlement callbacks;
-those integrations must be completed and tested before production enablement.
+USDT checkout is disabled by default. This repository does not include website
+checkout UI or product order creation; the public website is a separate
+repository. CeloHT settlement is manually checked outside this API before an
+administrator confirms it.
 
 Public contact and service enquiries are saved together with a durable Resend
 notification. The Core worker retries delivery to `contact@freclean.com` and
@@ -104,8 +107,8 @@ The production CORS origin is `https://freclean.com`. This repository does not c
 
 External dependencies still required for a full regulated deployment include
 private evidence storage and malware scanning, refund and notification providers,
-the customer/staff frontend repositories, payment processor approval, legal
-review for jurisdictional compliance, tax registration review, product
+the customer/staff frontend repositories, payment-route operational checks,
+legal review for jurisdictional compliance, tax registration review, product
 compliance review, and a formal security audit before production go-live.
 
 ## Legal & Compliance Status
