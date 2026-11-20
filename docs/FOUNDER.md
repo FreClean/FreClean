@@ -137,8 +137,7 @@ Technology & Payment Infrastructure
 
 The platform is designed to support modern payment technologies, subject to availability, integration, and applicable regulations:
 
-- Visa
-- Mastercard
+- Major credit and debit cards, where supported
 - USDT
 - WalletConnect-compatible wallets
 - CeloHT payment infrastructure where applicable
